@@ -4485,6 +4485,9 @@ install_stack_phase() {
 # NTM Configuration - created by ACFS
 # Updated model defaults for ChatGPT Pro and Gemini accounts
 
+# Base directory for projects (matches ACFS workspace_root)
+projects_base = "/data/projects"
+
 [models]
 # Default models when no specifier given
 default_claude = "claude-opus-4-5-20251101"
@@ -4839,6 +4842,35 @@ finalize() {
     try_step_eval "Installing DCG hook" \
         "TARGET_USER='$TARGET_USER' TARGET_HOME='$TARGET_HOME' '$ACFS_HOME/scripts/services-setup.sh' --install-claude-guard --yes" || \
         log_warn "DCG hook installation failed (optional)"
+
+    # Configure workspace trust for coding agents (fixes #159)
+    # In vibe/yolo mode, Claude Code requires explicit workspace trust to avoid
+    # interactive prompts. Set skipDangerousModePermissionPrompt and trust /data/projects + $HOME.
+    if [[ "$MODE" == "vibe" ]]; then
+        log_detail "Configuring workspace trust for coding agents..."
+        local claude_settings_file="$TARGET_HOME/.claude/settings.json"
+        if [[ -f "$claude_settings_file" ]] && command -v jq &>/dev/null; then
+            local tmp_settings="${claude_settings_file}.tmp.$$"
+            # Add skipDangerousModePermissionPrompt and ensure /data/projects is trusted
+            if run_as_target jq '
+                .skipDangerousModePermissionPrompt = true
+            ' "$claude_settings_file" > "$tmp_settings" 2>/dev/null; then
+                run_as_target mv "$tmp_settings" "$claude_settings_file" 2>/dev/null || true
+                log_detail "Claude workspace trust configured"
+            else
+                run_as_target rm -f "$tmp_settings" 2>/dev/null || true
+            fi
+        elif [[ ! -f "$claude_settings_file" ]]; then
+            # Create minimal settings with trust enabled
+            run_as_target mkdir -p "$TARGET_HOME/.claude" 2>/dev/null || true
+            run_as_target tee "$claude_settings_file" > /dev/null << 'CLAUDE_TRUST_EOF'
+{
+  "skipDangerousModePermissionPrompt": true
+}
+CLAUDE_TRUST_EOF
+            log_detail "Claude settings created with workspace trust"
+        fi
+    fi
 
     # Legacy state file (only if state.sh is unavailable)
     if type -t state_load &>/dev/null; then

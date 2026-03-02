@@ -287,12 +287,50 @@ INSTALL_AGENTS_GEMINI
     log_success "agents.gemini installed"
 }
 
+# OpenCode (multi-provider agent harness)
+install_agents_opencode() {
+    local module_id="agents.opencode"
+    acfs_require_contract "module:${module_id}" || return 1
+    log_step "Installing agents.opencode"
+
+    if [[ "${DRY_RUN:-false}" = "true" ]]; then
+        log_info "dry-run: install: curl -fsSL https://opencode.ai/install | bash (target_user)"
+    else
+        if ! run_as_target_shell <<'INSTALL_AGENTS_OPENCODE'
+curl -fsSL https://opencode.ai/install | bash
+INSTALL_AGENTS_OPENCODE
+        then
+            log_warn "agents.opencode: install command failed (optional)"
+            return 0
+        fi
+    fi
+
+    # Verify
+    if [[ "${DRY_RUN:-false}" = "true" ]]; then
+        log_info "dry-run: verify: opencode --version || opencode --help (target_user)"
+    else
+        if ! run_as_target_shell <<'INSTALL_AGENTS_OPENCODE'
+opencode --version || opencode --help
+INSTALL_AGENTS_OPENCODE
+        then
+            log_warn "agents.opencode: verify failed (optional)"
+            return 0
+        fi
+    fi
+
+    log_success "agents.opencode installed"
+}
+
 # Install all agents modules
 install_agents() {
     log_section "Installing agents modules"
     install_agents_claude
     install_agents_codex
     install_agents_gemini
+    # OpenCode is optional - install if INSTALL_OPENCODE=true
+    if [[ "${INSTALL_OPENCODE:-false}" = "true" ]]; then
+        install_agents_opencode
+    fi
 }
 
 # Run if executed directly

@@ -642,6 +642,45 @@ ubuntu_do_upgrade() {
         return 1
     fi
 
+    # After apt-get dist-upgrade in prepare, kernel updates may have created
+    # /var/run/reboot-required. do-release-upgrade refuses to run in that state.
+    # Handle this by rebooting first, then resuming. (Fixes #165)
+    if [[ -f /var/run/reboot-required ]]; then
+        log_warn "Kernel update during preparation requires reboot before do-release-upgrade"
+        if [[ -f /var/run/reboot-required.pkgs ]]; then
+            log_detail "Packages requiring reboot: $(tr '\n' ' ' < /var/run/reboot-required.pkgs | sed 's/ $//')"
+        fi
+
+        # Set up resume infrastructure so the upgrade continues after reboot
+        if type -t upgrade_setup_infrastructure &>/dev/null; then
+            local acfs_source_dir=""
+            if [[ -n "${SCRIPT_DIR:-}" ]] && [[ -d "$SCRIPT_DIR" ]]; then
+                acfs_source_dir="$SCRIPT_DIR"
+            elif [[ -n "${ACFS_BOOTSTRAP_DIR:-}" ]] && [[ -d "$ACFS_BOOTSTRAP_DIR" ]]; then
+                acfs_source_dir="$ACFS_BOOTSTRAP_DIR"
+            fi
+
+            if [[ -n "$acfs_source_dir" ]]; then
+                # Record state so installer knows to resume the upgrade after reboot
+                if type -t state_update &>/dev/null; then
+                    state_update ".ubuntu_upgrade.enabled = true | .ubuntu_upgrade.current_stage = \"pre_upgrade_reboot\"" 2>/dev/null || true
+                fi
+
+                upgrade_setup_infrastructure "$acfs_source_dir" || true
+            fi
+        fi
+
+        if type -t upgrade_update_motd &>/dev/null; then
+            upgrade_update_motd "Rebooting to apply kernel updates before Ubuntu upgrade..."
+        fi
+
+        log_warn "Rebooting in 5 seconds to clear pending kernel updates..."
+        log_info "After reboot, the upgrade will continue automatically."
+        sleep 5
+        shutdown -r now "ACFS: Rebooting to apply kernel updates before do-release-upgrade"
+        exit 0
+    fi
+
     # Apply workaround for DEB822 format bug in do-release-upgrade
     # Bug: AttributeError: property 'suites' of 'ExplodedDeb822SourceEntry' object has no setter
     ubuntu_workaround_deb822_bug || true

@@ -851,10 +851,11 @@ check_agents() {
         check "agent.alias.cod" "cod alias" "warn" "not in zshrc" "$alias_fix"
     fi
 
-    if grep -q "^alias gmi=" ~/.acfs/zsh/acfs.zshrc 2>/dev/null; then
-        check "agent.alias.gmi" "gmi alias" "pass"
+    # gmi is defined as a shell function (not an alias) in acfs.zshrc
+    if grep -q "^gmi()" ~/.acfs/zsh/acfs.zshrc 2>/dev/null || grep -q "^alias gmi=" ~/.acfs/zsh/acfs.zshrc 2>/dev/null; then
+        check "agent.alias.gmi" "gmi function" "pass"
     else
-        check "agent.alias.gmi" "gmi alias" "warn" "not in zshrc" "$alias_fix"
+        check "agent.alias.gmi" "gmi function" "warn" "not in zshrc" "$alias_fix"
     fi
 
     # Check for PATH conflicts (bead hi7)
@@ -977,6 +978,28 @@ check_cloud() {
             check "network.tailscale" "Tailscale (not installed)" "pass" "ok in CI"
         else
             check "network.tailscale" "Tailscale" "warn" "not installed (optional)" "Install: curl --proto '=https' --proto-redir '=https' -fsSL https://agent-flywheel.com/install | bash -s -- --yes --only network.tailscale"
+        fi
+    fi
+
+    # SSH server installed and running (fixes #161)
+    # Fresh installs (WSL, VM, containers) may not have openssh-server
+    if command -v sshd &>/dev/null || [[ -f /etc/ssh/sshd_config ]]; then
+        if command -v systemctl &>/dev/null && [[ -d /run/systemd/system ]]; then
+            if systemctl is-active --quiet ssh 2>/dev/null || systemctl is-active --quiet sshd 2>/dev/null; then
+                check "network.ssh_server" "SSH server" "pass" "installed and running"
+            else
+                check "network.ssh_server" "SSH server" "warn" "installed but not running" \
+                    "sudo systemctl enable --now ssh"
+            fi
+        else
+            check "network.ssh_server" "SSH server" "pass" "installed (no systemd)"
+        fi
+    else
+        if [[ "$doctor_ci" == "true" ]]; then
+            check "network.ssh_server" "SSH server (not installed)" "pass" "ok in CI"
+        else
+            check "network.ssh_server" "SSH server" "warn" "not installed" \
+                "sudo apt-get install -y openssh-server && sudo systemctl enable --now ssh"
         fi
     fi
 

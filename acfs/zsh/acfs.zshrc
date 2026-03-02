@@ -145,7 +145,7 @@ alias dex='docker exec -it'
 
 # --- Directory shortcuts ---
 alias dev='cd ~/Development'
-alias proj='cd ~/Projects'
+alias proj='cd /data/projects'
 alias dots='cd ~/dotfiles'
 alias p='cd /data/projects'
 

@@ -712,6 +712,28 @@ modules:
     verify:
       - ~/.local/bin/gemini --version || ~/.local/bin/gemini --help
 
+  - id: agents.opencode
+    description: OpenCode (multi-provider agent harness)
+    category: agents
+    phase: 7
+    run_as: target_user
+    optional: true
+    enabled_by_default: false
+    tags: [optional, agent]
+    dependencies:
+      - base.system
+    installed_check:
+      run_as: target_user
+      command: "command -v opencode"
+    install:
+      # Install OpenCode via official installer
+      - curl -fsSL https://opencode.ai/install | bash
+    verify:
+      - opencode --version || opencode --help
+    notes:
+      - "Supports GitHub Copilot and OpenAI Codex subscriptions"
+      - "Multi-provider agent supporting Claude, GPT, Gemini models"
+
   # ============================================================
   # PHASE 8: Cloud & database tools
   # ============================================================

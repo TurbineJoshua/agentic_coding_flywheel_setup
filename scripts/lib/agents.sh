@@ -285,9 +285,10 @@ _configure_gemini_settings() {
     # Create settings directory if needed
     _agent_run_as_user "mkdir -p '$settings_dir'" || return 1
 
-    # If settings file doesn't exist, create it with tmux-compatible defaults and OAuth auth
+    # If settings file doesn't exist, create it with tmux-compatible defaults, OAuth auth,
+    # and MCP Agent Mail server configuration (fixes #158)
     if [[ ! -f "$settings_file" ]]; then
-        log_detail "Creating Gemini settings for tmux compatibility and OAuth auth..."
+        log_detail "Creating Gemini settings for tmux compatibility, OAuth auth, and MCP Agent Mail..."
         # Write default settings - the JSON is simple enough to inline
         # Note: Using double quotes for variable expansion, escaping inner quotes
         _agent_run_as_user "cat > '$settings_file' << 'GEMINI_EOF'
@@ -296,6 +297,11 @@ _configure_gemini_settings() {
   \"tools\": {
     \"shell\": {
       \"enableInteractiveShell\": false
+    }
+  },
+  \"mcpServers\": {
+    \"mcp-agent-mail\": {
+      \"httpUrl\": \"http://127.0.0.1:8765/mcp/\"
     }
   }
 }
@@ -327,11 +333,18 @@ GEMINI_EOF"
             needs_update=true
         fi
 
+        # Check if MCP Agent Mail server is configured (fixes #158)
+        local mcp_value
+        mcp_value=$(_agent_run_as_user "jq -r '.mcpServers.\"mcp-agent-mail\".httpUrl // \"unset\"' '$settings_file'" 2>/dev/null || echo "error")
+        if [[ "$mcp_value" == "unset" || "$mcp_value" == "error" ]]; then
+            needs_update=true
+        fi
+
         if [[ "$needs_update" == "true" ]]; then
-            log_detail "Configuring Gemini settings for tmux compatibility and OAuth..."
-            # Update both shell settings and auth type
-            if _agent_run_as_user "jq '.selectedType = \"oauth-personal\" | .tools = (.tools // {}) | .tools.shell = (.tools.shell // {}) | .tools.shell.enableInteractiveShell = false' '$settings_file' > '$tmp_file' && mv '$tmp_file' '$settings_file'" 2>/dev/null; then
-                log_detail "Gemini settings configured (OAuth + tmux compatibility)"
+            log_detail "Configuring Gemini settings for tmux compatibility, OAuth, and MCP Agent Mail..."
+            # Update shell settings, auth type, and MCP server config
+            if _agent_run_as_user "jq '.selectedType = \"oauth-personal\" | .tools = (.tools // {}) | .tools.shell = (.tools.shell // {}) | .tools.shell.enableInteractiveShell = false | .mcpServers = (.mcpServers // {}) | .mcpServers.\"mcp-agent-mail\" = {\"httpUrl\": \"http://127.0.0.1:8765/mcp/\"}' '$settings_file' > '$tmp_file' && mv '$tmp_file' '$settings_file'" 2>/dev/null; then
+                log_detail "Gemini settings configured (OAuth + tmux + MCP Agent Mail)"
             else
                 _agent_run_as_user "rm -f '$tmp_file'" 2>/dev/null
                 log_warn "Could not update Gemini settings automatically"
