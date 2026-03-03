@@ -524,33 +524,74 @@ print_upstream_urls() {
 
 # Print URLs with current checksums (for updating checksums.yaml)
 print_current_checksums() {
+    local had_failure=false
+    local tmp_output=""
+
+    if command -v mktemp &>/dev/null; then
+        tmp_output=$(mktemp "${TMPDIR:-/tmp}/acfs-checksums-out.XXXXXX" 2>/dev/null) || tmp_output=""
+    fi
+
+    if [[ -z "$tmp_output" ]]; then
+        echo "ERROR: unable to create temp file for checksums output" >&2
+        return 1
+    fi
+
     # Progress info to stderr (not part of YAML output)
     echo "" >&2
     echo -e "${CYAN}Generating checksums.yaml...${NC}" >&2
     echo "" >&2
 
-    # YAML output to stdout
-    echo "# checksums.yaml - Auto-generated $(date -Iseconds)"
-    echo "# Run: ./scripts/lib/security.sh --update-checksums"
-    echo ""
-    echo "installers:"
+    {
+        # YAML output to stdout
+        echo "# checksums.yaml - Auto-generated $(date -Iseconds)"
+        echo "# Run: ./scripts/lib/security.sh --update-checksums"
+        echo ""
+        echo "installers:"
+    } >"$tmp_output"
 
+    local -a installer_names=()
+    local name=""
     for name in "${!KNOWN_INSTALLERS[@]}"; do
+        installer_names+=("$name")
+    done
+    if [[ ${#installer_names[@]} -gt 0 ]]; then
+        mapfile -t installer_names < <(printf '%s\n' "${installer_names[@]}" | sort)
+    fi
+
+    for name in "${installer_names[@]}"; do
         local url="${KNOWN_INSTALLERS[$name]}"
         local sha256
 
         printf "  Fetching %s... " "$name" >&2
         sha256=$(fetch_checksum "$url" 2>/dev/null) || {
             echo "FAILED" >&2
-            sha256="FETCH_FAILED"
+            had_failure=true
+            continue
         }
+
+        if [[ ! "$sha256" =~ ^[0-9a-f]{64}$ ]]; then
+            echo "FAILED (invalid hash format)" >&2
+            had_failure=true
+            continue
+        fi
         echo "done" >&2
 
-        echo "  $name:"
-        echo "    url: \"$url\""
-        echo "    sha256: \"$sha256\""
-        echo ""
+        {
+            echo "  $name:"
+            echo "    url: \"$url\""
+            echo "    sha256: \"$sha256\""
+            echo ""
+        } >>"$tmp_output"
     done
+
+    if [[ "$had_failure" == "true" ]]; then
+        rm -f "$tmp_output" 2>/dev/null || true
+        echo "ERROR: one or more installer checksums failed to fetch; refusing to emit incomplete checksums.yaml" >&2
+        return 1
+    fi
+
+    cat "$tmp_output"
+    rm -f "$tmp_output" 2>/dev/null || true
 }
 
 # ============================================================

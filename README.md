@@ -2332,9 +2332,9 @@ jobs:
     - Deploy to Vercel (production)
 ```
 
-### Automated Checksum Updates (`checksum-monitor.yml`)
+### Automated Checksum + Drift Repair (`checksum-monitor.yml`)
 
-ACFS automatically monitors upstream installers for changes and updates checksums:
+ACFS automatically monitors upstream installers for changes, and also repairs generated artifact checksum drift:
 
 ```yaml
 # Runs every 2 hours + on upstream changes
@@ -2347,11 +2347,17 @@ triggers:
 
 **How It Works:**
 
-1. **Verify Current Checksums**: Downloads all upstream installers, calculates SHA256
-2. **Detect Changes**: Compares against `checksums.yaml`
-3. **Categorize Tools**: Separates "trusted" tools (can auto-update) from others
-4. **Auto-Update**: For trusted tools, commits updated checksums automatically
-5. **Alert**: For non-trusted tools, creates GitHub issue for manual review
+1. **Verify Generated Artifact Drift**: Runs `scripts/check-manifest-drift.sh --json` to detect:
+   - `ACFS_MANIFEST_SHA256` mismatches
+   - internal script checksum drift (`scripts/generated/internal_checksums.sh`)
+2. **Auto-Repair Drift**: If drift is detected, runs `--fix` (regenerate + commit + push)
+3. **Verify Current Upstream Checksums**: Downloads all upstream installers, calculates SHA256
+4. **Detect Upstream Changes**: Compares against `checksums.yaml`
+5. **Categorize Tools**: Separates "trusted" tools (can auto-update) from others
+6. **Auto-Update Upstream Checksums**: Commits updated `checksums.yaml` when safe
+7. **Alert**: For non-trusted tool changes, creates GitHub issue for manual review
+
+The monitor **fails closed** when verification returns fetch errors or skipped entries; it will not emit partial/placeholder checksum updates.
 
 **Trusted Tools (Auto-Update Enabled):**
 - Dicklesworthstone stack tools (ntm, cass, cm, ubs, slb, dcg, caam, bv, agent-mail, ru)

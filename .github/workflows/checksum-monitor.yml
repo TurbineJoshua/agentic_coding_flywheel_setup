@@ -6,7 +6,13 @@ on:
   workflow_dispatch:         # Manual trigger for testing
   push:
     paths:
-      - 'scripts/lib/security.sh'  # Re-run if security.sh changes
+      - 'install.sh'
+      - 'acfs.manifest.yaml'
+      - 'checksums.yaml'
+      - 'packages/manifest/**'
+      - 'scripts/lib/**'
+      - 'scripts/generated/**'
+      - '.github/workflows/checksum-monitor.yml'
   repository_dispatch:
     types: [upstream-changed]  # Triggered by our other repos via webhook
 
@@ -17,6 +23,7 @@ concurrency:
 jobs:
   auto-update-checksums:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     permissions:
       contents: write
       issues: write  # For creating issues on failure
@@ -33,6 +40,66 @@ jobs:
           echo "Repository dispatch payload:"
           echo '${{ toJson(github.event.client_payload) }}'
 
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install manifest generator dependencies
+        run: bun install
+        working-directory: packages/manifest
+
+      - name: Verify generated artifact drift
+        id: drift
+        run: |
+          chmod +x ./scripts/check-manifest-drift.sh
+
+          echo "🔍 Verifying manifest/internal generated artifact drift..."
+
+          set +e
+          ./scripts/check-manifest-drift.sh --json > drift.json 2>drift-errors.log
+          drift_exit=$?
+          set -e
+
+          if [[ "$drift_exit" -gt 1 ]]; then
+            echo "❌ Drift checker failed (exit $drift_exit)"
+            cat drift-errors.log || true
+            exit 1
+          fi
+
+          if ! jq empty drift.json 2>/dev/null; then
+            echo "❌ Drift checker did not return valid JSON"
+            cat drift.json
+            exit 1
+          fi
+
+          drift_detected=$(jq -r '.drift_detected' drift.json)
+          internal_drifted=$(jq '.internal_scripts.drifted // 0' drift.json)
+          reason_count=$(jq '.reasons | length' drift.json)
+
+          echo "drift_detected=$drift_detected" >> "$GITHUB_OUTPUT"
+          echo "internal_drifted=$internal_drifted" >> "$GITHUB_OUTPUT"
+          echo "reason_count=$reason_count" >> "$GITHUB_OUTPUT"
+
+          if [[ "$drift_detected" == "true" ]]; then
+            echo "⚠️ Generated artifact drift detected"
+            jq -r '.reasons[] | "  - \(.)"' drift.json
+          else
+            echo "✅ No manifest/internal drift detected"
+          fi
+
+      - name: Auto-fix generated artifact drift
+        id: drift_fix
+        if: steps.drift.outputs.drift_detected == 'true'
+        run: |
+          ./scripts/check-manifest-drift.sh --fix
+          echo "fixed=true" >> "$GITHUB_OUTPUT"
+
       - name: Verify current checksums
         id: verify
         run: |
@@ -40,10 +107,11 @@ jobs:
 
           echo "🔍 Verifying checksums against upstream..."
 
-          # Note: --verify returns exit 1 when mismatches found, which is expected
-          # We capture the JSON output regardless of exit code
-          # stderr is separate to avoid corrupting JSON with any warning messages
-          ./scripts/lib/security.sh --verify --json > current.json 2>verify-errors.log || true
+          # --verify returns non-zero for mismatches/errors. Capture output and classify.
+          set +e
+          ./scripts/lib/security.sh --verify --json > current.json 2>verify-errors.log
+          verify_exit=$?
+          set -e
 
           # Check if JSON is valid
           if ! jq empty current.json 2>/dev/null; then
@@ -56,10 +124,12 @@ jobs:
           # Extract counts from JSON
           mismatches=$(jq '.mismatches | length' current.json)
           errors=$(jq '.errors | length' current.json)
-          total_issues=$((mismatches + errors))
+          skipped=$(jq '.skipped | length' current.json)
+          total_issues=$((mismatches + errors + skipped))
 
           echo "mismatches=$mismatches" >> $GITHUB_OUTPUT
           echo "errors=$errors" >> $GITHUB_OUTPUT
+          echo "skipped=$skipped" >> $GITHUB_OUTPUT
           echo "total_issues=$total_issues" >> $GITHUB_OUTPUT
 
           # Categorize changed tools
@@ -84,7 +154,16 @@ jobs:
           echo "trusted_changed=$TRUSTED_CHANGED" >> $GITHUB_OUTPUT
           echo "external_changed=$EXTERNAL_CHANGED" >> $GITHUB_OUTPUT
 
-          if [[ "$total_issues" -gt 0 ]]; then
+          if [[ "$errors" -gt 0 || "$skipped" -gt 0 ]]; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo ""
+            echo "❌ Verification returned errors/skips; refusing to auto-update checksums.yaml"
+            jq -r '.errors[] | "  error: \(.name) -> \(.error)"' current.json 2>/dev/null || true
+            jq -r '.skipped[] | "  skipped: \(.name) -> \(.reason)"' current.json 2>/dev/null || true
+            exit 1
+          fi
+
+          if [[ "$mismatches" -gt 0 ]]; then
             echo "changed=true" >> $GITHUB_OUTPUT
             echo ""
             echo "📋 Changed tools:"
@@ -99,6 +178,11 @@ jobs:
             fi
           else
             echo "changed=false" >> $GITHUB_OUTPUT
+            if [[ "$verify_exit" -ne 0 ]]; then
+              echo "❌ Verification failed unexpectedly with no mismatches/errors/skips"
+              cat verify-errors.log || true
+              exit 1
+            fi
             echo "✅ All checksums match - no update needed"
           fi
 
@@ -112,9 +196,6 @@ jobs:
         if: steps.verify.outputs.changed == 'true'
         id: commit
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
           # Check if checksums.yaml actually changed (handles race condition)
           if git diff --quiet checksums.yaml; then
             echo "checksums.yaml unchanged (possibly already updated by another run)"
@@ -142,9 +223,10 @@ jobs:
             exit 0
           }
 
-          git push
+          git push origin HEAD:main
+          git push origin main:master
           echo "committed=true" >> $GITHUB_OUTPUT
-          echo "✅ Successfully pushed checksum updates"
+          echo "✅ Successfully pushed checksum updates and mirrored main->master"
 
       - name: Create issue for external changes (security visibility)
         if: steps.verify.outputs.external_changed != '' && steps.commit.outputs.committed == 'true'
@@ -215,11 +297,18 @@ jobs:
           echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| Total Checked | $(jq '.total // 0' current.json 2>/dev/null || echo 0) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Manifest/Internal Drift | ${{ steps.drift.outputs.drift_detected || 'false' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Internal Drifted Files | ${{ steps.drift.outputs.internal_drifted || 0 }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Mismatches | ${{ steps.verify.outputs.mismatches || 0 }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Errors | ${{ steps.verify.outputs.errors || 0 }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Skipped | ${{ steps.verify.outputs.skipped || 0 }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Trusted Changed | ${{ steps.verify.outputs.trusted_changed || 'none' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| External Changed | ${{ steps.verify.outputs.external_changed || 'none' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ steps.drift.outputs.drift_detected }}" == "true" ]]; then
+            echo "✅ **Generated artifact drift detected and auto-fixed**" >> $GITHUB_STEP_SUMMARY
+          fi
 
           if [[ "${{ steps.verify.outputs.changed }}" == "true" ]]; then
             if [[ "${{ steps.commit.outputs.committed }}" == "true" ]]; then
