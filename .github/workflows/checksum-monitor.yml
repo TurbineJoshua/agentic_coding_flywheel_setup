@@ -80,11 +80,8 @@ jobs:
 
           drift_detected=$(jq -r '.drift_detected' drift.json)
           internal_drifted=$(jq '.internal_scripts.drifted // 0' drift.json)
-          reason_count=$(jq '.reasons | length' drift.json)
-
           echo "drift_detected=$drift_detected" >> "$GITHUB_OUTPUT"
           echo "internal_drifted=$internal_drifted" >> "$GITHUB_OUTPUT"
-          echo "reason_count=$reason_count" >> "$GITHUB_OUTPUT"
 
           if [[ "$drift_detected" == "true" ]]; then
             echo "⚠️ Generated artifact drift detected"

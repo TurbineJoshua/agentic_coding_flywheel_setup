@@ -1405,7 +1405,7 @@ detect_environment() {
                     echo "WARNING: Continuing in non-strict mode to avoid blocking installation." >&2
                 fi
             fi
-            if declare -f log_success &>/dev/null; then
+            if [[ "$_ics_fail" -eq 0 ]] && declare -f log_success &>/dev/null; then
                 log_success "Internal script integrity verified (${ACFS_INTERNAL_CHECKSUMS_COUNT:-?} scripts)"
             fi
         fi

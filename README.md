@@ -2342,7 +2342,7 @@ schedule: "0 */2 * * *"
 triggers:
   - Schedule (every 2 hours)
   - Webhook from upstream repos (repository_dispatch)
-  - Changes to security.sh
+  - Pushes touching installer/checksum/generator files
 ```
 
 **How It Works:**
