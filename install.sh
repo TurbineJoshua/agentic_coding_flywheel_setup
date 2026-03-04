@@ -4504,6 +4504,13 @@ projects_base = "/data/projects"
 default_claude = "claude-opus-4-5-20251101"
 default_codex = "gpt-5.2-codex"
 default_gemini = "gemini-3-pro-preview"
+
+[agents]
+# Override gemini command to set TERM=xterm-256color (issue #178).
+# When TERM=tmux-256color (the tmux default-terminal), a node-pty bug
+# in gemini-cli causes SIGHUP on all shell tool invocations.
+# Scoping the override here keeps tmux and other panes on tmux-256color.
+gemini = "TERM=xterm-256color gemini{{if .Model}} --model {{shellQuote .Model}}{{end}} --yolo"
 NTM_CONFIG_EOF
             then
                 log_success "NTM config created with current model defaults"
