@@ -24,6 +24,18 @@ if [[ -f "$SCRIPT_DIR/../../VERSION" ]]; then
     ACFS_VERSION="$(cat "$SCRIPT_DIR/../../VERSION" 2>/dev/null || echo "$ACFS_VERSION")"
 fi
 
+# Build display version: v0.6.0+a7598d0 (with short commit hash when available)
+_acfs_short_hash=""
+if command -v git &>/dev/null && [[ -d "$SCRIPT_DIR/../../.git" ]]; then
+    _acfs_short_hash=$(git -C "$SCRIPT_DIR/../.." rev-parse --short HEAD 2>/dev/null) || true
+fi
+if [[ -n "$_acfs_short_hash" ]]; then
+    ACFS_VERSION_DISPLAY="v${ACFS_VERSION}+${_acfs_short_hash}"
+else
+    ACFS_VERSION_DISPLAY="v${ACFS_VERSION}"
+fi
+unset _acfs_short_hash
+
 # Colors - respect NO_COLOR standard (https://no-color.org/)
 # Related: bd-39ye
 if [[ -z "${NO_COLOR:-}" ]] && [[ -t 2 ]]; then
@@ -143,7 +155,7 @@ init_logging() {
         echo "ACFS Update Log"
         echo "Started: $(date -Iseconds)"
         echo "User: $(whoami)"
-        echo "Version: $ACFS_VERSION"
+        echo "Version: $ACFS_VERSION_DISPLAY"
         echo "==============================================="
         echo ""
     } >> "$UPDATE_LOG_FILE"
@@ -906,7 +918,7 @@ update_acfs_self() {
     fi
 
     if [[ "$local_head" == "$remote_head" ]]; then
-        log_item "ok" "ACFS" "already up to date"
+        log_item "ok" "ACFS $ACFS_VERSION_DISPLAY" "already up to date"
         return 0
     fi
 
@@ -937,7 +949,18 @@ update_acfs_self() {
         return 0
     fi
 
-    log_item "ok" "ACFS" "updated ($commit_count commits)"
+    # Refresh version display with new commit hash after pull
+    local _new_short_hash=""
+    _new_short_hash=$(git -C "$ACFS_REPO_ROOT" rev-parse --short HEAD 2>/dev/null) || true
+    if [[ -n "$_new_short_hash" ]]; then
+        # Re-read VERSION in case it changed
+        if [[ -f "$ACFS_REPO_ROOT/VERSION" ]]; then
+            ACFS_VERSION="$(cat "$ACFS_REPO_ROOT/VERSION" 2>/dev/null || echo "$ACFS_VERSION")"
+        fi
+        ACFS_VERSION_DISPLAY="v${ACFS_VERSION}+${_new_short_hash}"
+    fi
+
+    log_item "ok" "ACFS $ACFS_VERSION_DISPLAY" "updated ($commit_count commits)"
     log_to_file "ACFS updated from $local_head to $remote_head"
 
     # Check if update.sh itself changed - if so, re-exec
@@ -2567,7 +2590,7 @@ main() {
     # Header
     if [[ "$QUIET" != "true" ]]; then
         echo ""
-        echo -e "${BOLD}ACFS Update v$ACFS_VERSION${NC}"
+        echo -e "${BOLD}ACFS Update $ACFS_VERSION_DISPLAY${NC}"
         echo -e "User: $(whoami)"
         echo -e "Date: $(date '+%Y-%m-%d %H:%M')"
 
