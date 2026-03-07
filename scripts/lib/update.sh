@@ -811,6 +811,26 @@ update_acfs_self() {
         return 0
     fi
 
+    # Recovery for orphaned git init (issue #200)
+    if [[ -d "$ACFS_REPO_ROOT/.git" ]] && ! git -C "$ACFS_REPO_ROOT" rev-parse HEAD &>/dev/null; then
+        log_info "Detected incomplete git bootstrap — attempting recovery..."
+        local expected_origin="https://github.com/Dicklesworthstone/agentic_coding_flywheel_setup.git"
+        local actual_origin
+        actual_origin=$(git -C "$ACFS_REPO_ROOT" remote get-url origin 2>/dev/null || true)
+        if [[ "$actual_origin" == *"agentic_coding_flywheel_setup"* ]]; then
+            git -C "$ACFS_REPO_ROOT" fetch origin main 2>/dev/null || true
+            if git -C "$ACFS_REPO_ROOT" checkout --force -B main --track origin/main 2>/dev/null; then
+                log_info "Git bootstrap recovery succeeded"
+            else
+                log_warn "Git bootstrap recovery failed — removing .git for fresh init"
+                rm -rf "$ACFS_REPO_ROOT/.git"
+            fi
+        else
+            log_warn "Unknown origin '$actual_origin' — removing .git for fresh init"
+            rm -rf "$ACFS_REPO_ROOT/.git"
+        fi
+    fi
+
     # Check if ACFS repo exists and is a git repo.
     # If installed via tarball (no .git dir), bootstrap a git repo so
     # the existing pull-based self-update logic works on subsequent runs.
@@ -847,7 +867,7 @@ update_acfs_self() {
 
         # Use a hard reset via checkout so the working tree is updated to match
         # origin/main exactly (tarball files are replaced with the real repo state).
-        if ! git -C "$ACFS_REPO_ROOT" checkout -B main --track origin/main 2>/dev/null; then
+        if ! git -C "$ACFS_REPO_ROOT" checkout -B main --track origin/main; then
             log_item "warn" "ACFS self-update" "git checkout failed during bootstrap"
             return 0
         fi
@@ -1994,7 +2014,7 @@ update_stack() {
     run_cmd "RANO" update_run_verified_installer rano
 
     # MDWB (Markdown Web Browser) - always install/update
-    run_cmd "MDWB" update_run_verified_installer mdwb
+    run_cmd "MDWB" update_run_verified_installer mdwb --yes
 
     # S2P (Source to Prompt TUI) - always install/update
     run_cmd "S2P" update_run_verified_installer s2p
