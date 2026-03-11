@@ -2757,6 +2757,11 @@ init_target_paths() {
         log_fatal "TARGET_HOME must be an absolute path (got: $TARGET_HOME)"
     fi
 
+    # Configurable binary install directory (fixes #211).
+    # Override via ACFS_BIN_DIR for shared/multi-user machines:
+    #   ACFS_BIN_DIR=/usr/local/bin ./install.sh
+    ACFS_BIN_DIR="${ACFS_BIN_DIR:-$TARGET_HOME/.local/bin}"
+
     # ACFS directories for target user
     ACFS_HOME="${ACFS_HOME:-$TARGET_HOME/.acfs}"
     ACFS_STATE_FILE="${ACFS_STATE_FILE:-$ACFS_HOME/state.json}"
@@ -2771,11 +2776,11 @@ init_target_paths() {
     log_detail "Target home: $TARGET_HOME"
 
     # Export for generated installers (run via subshells).
-    export TARGET_USER TARGET_HOME ACFS_HOME ACFS_STATE_FILE
+    export TARGET_USER TARGET_HOME ACFS_HOME ACFS_STATE_FILE ACFS_BIN_DIR
 
     # Add target user's bin directories to PATH early so that tools installed
     # later (like Claude Code) see the correct PATH and don't warn about it.
-    export PATH="$TARGET_HOME/.local/bin:$TARGET_HOME/.cargo/bin:$TARGET_HOME/.bun/bin:$PATH"
+    export PATH="$ACFS_BIN_DIR:$TARGET_HOME/.cargo/bin:$TARGET_HOME/.bun/bin:$PATH"
 }
 
 validate_target_user() {
@@ -3375,9 +3380,9 @@ setup_filesystem() {
     $SUDO chmod 755 "$ACFS_HOME/scripts/lib/"*.sh 2>/dev/null || true
     acfs_chown_tree "$TARGET_USER:$TARGET_USER" "$ACFS_HOME/scripts" 2>/dev/null || true
 
-    # Create user's .local/bin and .bun directories early - many installers need them
+    # Create user's bin and .bun directories early - many installers need them
     # This prevents NTM, UBS, CASS, Bun, etc. from creating them as root via sudo
-    try_step "Creating .local/bin directory" run_as_target mkdir -p "$TARGET_HOME/.local/bin" || return 1
+    try_step "Creating bin directory ($ACFS_BIN_DIR)" run_as_target mkdir -p "$ACFS_BIN_DIR" || return 1
     try_step "Creating .bun directory" run_as_target mkdir -p "$TARGET_HOME/.bun" || return 1
 
     log_success "Filesystem setup complete"
@@ -3782,7 +3787,7 @@ install_languages_legacy_lang() {
     fi
 
     # uv (install as target user)
-    if [[ -x "$TARGET_HOME/.local/bin/uv" ]] || [[ -x "$TARGET_HOME/.cargo/bin/uv" ]] || command -v uv &>/dev/null; then
+    if [[ -x "$ACFS_BIN_DIR/uv" ]] || [[ -x "$TARGET_HOME/.cargo/bin/uv" ]] || command -v uv &>/dev/null; then
         log_detail "uv already installed"
     else
         log_detail "Installing uv for $TARGET_USER"
@@ -3873,7 +3878,7 @@ install_languages_legacy_tools() {
 
     # Zoxide - prefer apt to avoid GitHub API rate limits in CI
     # Check multiple possible locations
-    if [[ -x "$TARGET_HOME/.local/bin/zoxide" ]] || [[ -x "/usr/local/bin/zoxide" ]] || command -v zoxide &>/dev/null; then
+    if [[ -x "$ACFS_BIN_DIR/zoxide" ]] || [[ -x "/usr/local/bin/zoxide" ]] || command -v zoxide &>/dev/null; then
         log_detail "Zoxide already installed"
     else
         log_detail "Installing Zoxide for $TARGET_USER"
@@ -3933,9 +3938,9 @@ install_agents_phase() {
 
         # CI/doctor expectations: ensure `claude` resolves to ~/.local/bin/claude.
         # The native installer can choose non-standard paths, and bun installs land in ~/.bun/bin.
-        local claude_bin_local="$TARGET_HOME/.local/bin/claude"
+        local claude_bin_local="$ACFS_BIN_DIR/claude"
         if [[ ! -x "$claude_bin_local" ]]; then
-            run_as_target mkdir -p "$TARGET_HOME/.local/bin" 2>/dev/null || true
+            run_as_target mkdir -p "$ACFS_BIN_DIR" 2>/dev/null || true
 
             local claude_candidate=""
             local candidates=(
@@ -3974,14 +3979,14 @@ install_agents_phase() {
     # Claude Code (install as target user)
     # NOTE: The native installer may choose a non-standard install path; CI smoke
     # checks require claude to exist at ~/.local/bin/claude or ~/.bun/bin/claude.
-    local claude_bin_local="$TARGET_HOME/.local/bin/claude"
+    local claude_bin_local="$ACFS_BIN_DIR/claude"
     local claude_bin_bun="$TARGET_HOME/.bun/bin/claude"
     if [[ -x "$claude_bin_local" ]]; then
         log_detail "Claude Code already installed ($claude_bin_local)"
     elif [[ -x "$claude_bin_bun" ]]; then
         log_detail "Claude Code already installed ($claude_bin_bun)"
     else
-        run_as_target mkdir -p "$TARGET_HOME/.local/bin" 2>/dev/null || true
+        run_as_target mkdir -p "$ACFS_BIN_DIR" 2>/dev/null || true
 
         log_detail "Installing Claude Code (native) for $TARGET_USER"
         try_step "Installing Claude Code (native)" acfs_run_verified_upstream_script_as_target "claude" "bash" latest || true
@@ -4024,7 +4029,7 @@ install_agents_phase() {
     # Prefer ~/.local/bin for Claude to avoid PATH conflict warnings in acfs doctor.
     # (If Claude was installed via bun, link it into ~/.local/bin which is earlier in PATH.)
     if [[ ! -x "$claude_bin_local" && -x "$claude_bin_bun" ]]; then
-        run_as_target mkdir -p "$TARGET_HOME/.local/bin" 2>/dev/null || true
+        run_as_target mkdir -p "$ACFS_BIN_DIR" 2>/dev/null || true
         try_step "Linking Claude Code into ~/.local/bin" run_as_target ln -sf "$claude_bin_bun" "$claude_bin_local" || true
     fi
 
@@ -4048,9 +4053,9 @@ install_agents_phase() {
     ' _ "$bun_bin" || true
 
     # Create wrapper script that uses bun as runtime (avoids node PATH issues)
-    local codex_bin_local="$TARGET_HOME/.local/bin/codex"
+    local codex_bin_local="$ACFS_BIN_DIR/codex"
     if [[ -x "$TARGET_HOME/.bun/bin/codex" ]] && [[ ! -x "$codex_bin_local" ]]; then
-        run_as_target mkdir -p "$TARGET_HOME/.local/bin" 2>/dev/null || true
+        run_as_target mkdir -p "$ACFS_BIN_DIR" 2>/dev/null || true
         # shellcheck disable=SC2016  # Variables expand inside the bash -c script, not here.
         try_step "Creating Codex bun wrapper" run_as_target bash -c '
             set -euo pipefail
@@ -4065,9 +4070,9 @@ install_agents_phase() {
     try_step "Installing Gemini CLI" run_as_target "$bun_bin" install -g --trust @google/gemini-cli@latest || true
 
     # Create wrapper script that uses bun as runtime (avoids node PATH issues)
-    local gemini_bin_local="$TARGET_HOME/.local/bin/gemini"
+    local gemini_bin_local="$ACFS_BIN_DIR/gemini"
     if [[ -x "$TARGET_HOME/.bun/bin/gemini" ]] && [[ ! -x "$gemini_bin_local" ]]; then
-        run_as_target mkdir -p "$TARGET_HOME/.local/bin" 2>/dev/null || true
+        run_as_target mkdir -p "$ACFS_BIN_DIR" 2>/dev/null || true
         # shellcheck disable=SC2016  # Variables expand inside the bash -c script, not here.
         try_step "Creating Gemini bun wrapper" run_as_target bash -c '
             set -euo pipefail
@@ -4267,12 +4272,12 @@ install_supabase_cli_release() {
     chmod 755 "$tmp_dir" 2>/dev/null || true
     chmod 755 "$extracted_bin" 2>/dev/null || true
 
-    run_as_target mkdir -p "$TARGET_HOME/.local/bin" 2>/dev/null || true
-    if ! run_as_target install -m 0755 "$extracted_bin" "$TARGET_HOME/.local/bin/supabase"; then
-        log_error "Supabase CLI: failed to install into ~/.local/bin"
+    run_as_target mkdir -p "$ACFS_BIN_DIR" 2>/dev/null || true
+    if ! run_as_target install -m 0755 "$extracted_bin" "$ACFS_BIN_DIR/supabase"; then
+        log_error "Supabase CLI: failed to install into $ACFS_BIN_DIR"
         return 1
     fi
-    if ! run_as_target "$TARGET_HOME/.local/bin/supabase" --version >/dev/null 2>&1; then
+    if ! run_as_target "$ACFS_BIN_DIR/supabase" --version >/dev/null 2>&1; then
         log_error "Supabase CLI: installed but failed to run"
         return 1
     fi
@@ -4296,7 +4301,7 @@ install_cloud_db_legacy_cloud() {
             local cli
             for cli in wrangler supabase vercel; do
                 if [[ "$cli" == "supabase" ]]; then
-                    if [[ -x "$TARGET_HOME/.local/bin/supabase" ]] || [[ -x "$TARGET_HOME/.bun/bin/supabase" ]]; then
+                    if [[ -x "$ACFS_BIN_DIR/supabase" ]] || [[ -x "$TARGET_HOME/.bun/bin/supabase" ]]; then
                         log_detail "supabase already installed"
                         continue
                     fi
@@ -4319,11 +4324,11 @@ install_cloud_db_legacy_cloud() {
                 if try_step "Installing $cli via bun" run_as_target "$bun_bin" install -g --trust "${cli}@latest"; then
                     if [[ -x "$TARGET_HOME/.bun/bin/$cli" ]]; then
                         log_success "$cli installed"
-                        # Create a bun-based shim in ~/.local/bin for wrangler (issue #152).
+                        # Create a bun-based shim in ACFS_BIN_DIR for wrangler (issue #152).
                         # wrangler installed via bun may fail at runtime if node is missing.
                         # The shim uses `bun x` to run wrangler, avoiding the node dependency.
                         if [[ "$cli" == "wrangler" ]] && ! command -v node &>/dev/null; then
-                            local shim_dir="$TARGET_HOME/.local/bin"
+                            local shim_dir="$ACFS_BIN_DIR"
                             mkdir -p "$shim_dir" 2>/dev/null || true
                             if [[ ! -f "$shim_dir/wrangler" ]] || grep -q 'bun x wrangler' "$shim_dir/wrangler" 2>/dev/null; then
                                 cat > "$shim_dir/wrangler" <<'WRANGLER_SHIM'
@@ -4359,7 +4364,7 @@ install_cloud_db_legacy() {
             local cli
             for cli in wrangler supabase vercel; do
                 if [[ "$cli" == "supabase" ]]; then
-                    if [[ -x "$TARGET_HOME/.local/bin/supabase" ]] || [[ -x "$TARGET_HOME/.bun/bin/supabase" ]]; then
+                    if [[ -x "$ACFS_BIN_DIR/supabase" ]] || [[ -x "$TARGET_HOME/.bun/bin/supabase" ]]; then
                         log_detail "supabase already installed"
                         continue
                     fi
@@ -4447,7 +4452,7 @@ install_cloud_db() {
 # Helper: check if a binary exists in common install locations
 binary_installed() {
     local name="$1"
-    [[ -x "$TARGET_HOME/.local/bin/$name" ]] || \
+    [[ -x "$ACFS_BIN_DIR/$name" ]] || \
     [[ -x "/usr/local/bin/$name" ]] || \
     [[ -x "$TARGET_HOME/.bun/bin/$name" ]] || \
     [[ -x "$TARGET_HOME/.cargo/bin/$name" ]]
@@ -4690,8 +4695,8 @@ NTM_CONFIG_EOF
 
     # Best-effort hook registration (Claude Code)
     local dcg_bin=""
-    if [[ -x "$TARGET_HOME/.local/bin/dcg" ]]; then
-        dcg_bin="$TARGET_HOME/.local/bin/dcg"
+    if [[ -x "$ACFS_BIN_DIR/dcg" ]]; then
+        dcg_bin="$ACFS_BIN_DIR/dcg"
     elif [[ -x "$TARGET_HOME/.cargo/bin/dcg" ]]; then
         dcg_bin="$TARGET_HOME/.cargo/bin/dcg"
     elif [[ -x "/usr/local/bin/dcg" ]]; then
@@ -4768,8 +4773,8 @@ finalize() {
     try_step "Setting onboard permissions" $SUDO chmod 755 "$ACFS_HOME/onboard/onboard.sh" || return 1
     try_step "Setting onboard ownership" acfs_chown_tree "$TARGET_USER:$TARGET_USER" "$ACFS_HOME/onboard" || return 1
 
-    try_step "Creating .local/bin directory" run_as_target mkdir -p "$TARGET_HOME/.local/bin" || return 1
-    try_step "Linking onboard command" run_as_target ln -sf "$ACFS_HOME/onboard/onboard.sh" "$TARGET_HOME/.local/bin/onboard" || return 1
+    try_step "Creating bin directory ($ACFS_BIN_DIR)" run_as_target mkdir -p "$ACFS_BIN_DIR" || return 1
+    try_step "Linking onboard command" run_as_target ln -sf "$ACFS_HOME/onboard/onboard.sh" "$ACFS_BIN_DIR/onboard" || return 1
 
     # Install acfs scripts (for acfs CLI subcommands)
     log_detail "Installing acfs scripts"
@@ -4797,7 +4802,7 @@ finalize() {
     try_step "Installing acfs-update" install_asset "scripts/acfs-update" "$ACFS_HOME/bin/acfs-update" || return 1
     try_step "Setting acfs-update permissions" $SUDO chmod 755 "$ACFS_HOME/bin/acfs-update" || return 1
     try_step "Setting acfs-update ownership" $SUDO chown "$TARGET_USER:$TARGET_USER" "$ACFS_HOME/bin/acfs-update" || return 1
-    try_step "Linking acfs-update command" run_as_target ln -sf "$ACFS_HOME/bin/acfs-update" "$TARGET_HOME/.local/bin/acfs-update" || return 1
+    try_step "Linking acfs-update command" run_as_target ln -sf "$ACFS_HOME/bin/acfs-update" "$ACFS_BIN_DIR/acfs-update" || return 1
 
     # Install root AGENTS.md generator (if available) and generate /AGENTS.md once
     if try_step "Installing flywheel-update-agents-md" install_asset "scripts/generate-root-agents-md.sh" "$ACFS_HOME/bin/flywheel-update-agents-md"; then
@@ -4853,7 +4858,7 @@ finalize() {
     try_step "Installing acfs CLI" install_asset "scripts/lib/doctor.sh" "$ACFS_HOME/bin/acfs" || return 1
     try_step "Setting acfs permissions" $SUDO chmod 755 "$ACFS_HOME/bin/acfs" || return 1
     try_step "Setting acfs ownership" $SUDO chown "$TARGET_USER:$TARGET_USER" "$ACFS_HOME/bin/acfs" || return 1
-    try_step "Linking acfs command" run_as_target ln -sf "$ACFS_HOME/bin/acfs" "$TARGET_HOME/.local/bin/acfs" || return 1
+    try_step "Linking acfs command" run_as_target ln -sf "$ACFS_HOME/bin/acfs" "$ACFS_BIN_DIR/acfs" || return 1
 
     # Install global acfs wrapper (works for root and all users)
     # This wrapper finds the target user from state and runs acfs as that user
@@ -5062,7 +5067,7 @@ run_smoke_test() {
     # 5) bun, uv, cargo, go available
     local missing_lang=()
     [[ -x "$TARGET_HOME/.bun/bin/bun" ]] || missing_lang+=("bun")
-    [[ -x "$TARGET_HOME/.local/bin/uv" || -x "$TARGET_HOME/.cargo/bin/uv" ]] || missing_lang+=("uv")
+    [[ -x "$ACFS_BIN_DIR/uv" || -x "$TARGET_HOME/.cargo/bin/uv" ]] || missing_lang+=("uv")
     [[ -x "$TARGET_HOME/.cargo/bin/cargo" ]] || missing_lang+=("cargo")
     command_exists go || missing_lang+=("go")
     if [[ ${#missing_lang[@]} -eq 0 ]]; then
@@ -5076,9 +5081,9 @@ run_smoke_test() {
 
     # 6) claude, codex, gemini commands exist
     local missing_agents=()
-    [[ -x "$TARGET_HOME/.local/bin/claude" || -x "$TARGET_HOME/.bun/bin/claude" ]] || missing_agents+=("claude")
-    [[ -x "$TARGET_HOME/.bun/bin/codex" || -x "$TARGET_HOME/.local/bin/codex" ]] || missing_agents+=("codex")
-    [[ -x "$TARGET_HOME/.bun/bin/gemini" || -x "$TARGET_HOME/.local/bin/gemini" ]] || missing_agents+=("gemini")
+    [[ -x "$ACFS_BIN_DIR/claude" || -x "$TARGET_HOME/.bun/bin/claude" ]] || missing_agents+=("claude")
+    [[ -x "$TARGET_HOME/.bun/bin/codex" || -x "$ACFS_BIN_DIR/codex" ]] || missing_agents+=("codex")
+    [[ -x "$TARGET_HOME/.bun/bin/gemini" || -x "$ACFS_BIN_DIR/gemini" ]] || missing_agents+=("gemini")
     if [[ ${#missing_agents[@]} -eq 0 ]]; then
         echo "✅ Agents: claude, codex, gemini" >&2
         ((critical_passed += 1))
@@ -5099,7 +5104,7 @@ run_smoke_test() {
     fi
 
     # 8) onboard command exists
-    if [[ -x "$TARGET_HOME/.local/bin/onboard" ]]; then
+    if [[ -x "$ACFS_BIN_DIR/onboard" ]]; then
         echo "✅ Onboard: installed" >&2
         ((critical_passed += 1))
     else

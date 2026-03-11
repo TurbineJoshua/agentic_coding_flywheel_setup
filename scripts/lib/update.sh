@@ -92,9 +92,10 @@ declare -gA VERSION_AFTER=()
 ensure_path() {
     local dir
     local to_add=()
+    local _acfs_bin="${ACFS_BIN_DIR:-$HOME/.local/bin}"
 
     for dir in \
-        "$HOME/.local/bin" \
+        "$_acfs_bin" \
         "$HOME/.bun/bin" \
         "$HOME/.cargo/bin" \
         "$HOME/go/bin" \
@@ -1835,11 +1836,11 @@ update_stack() {
         return 0
     fi
 
-    # Brenner Bot - MUST run BEFORE individual tool installs (NTM, CASS, CM, etc.)
-    # because Brenner Bot's installer bundles and pins its own copies of these tools
-    # at older versions. By running it first, its pinned deps get laid down, then the
-    # individual tool updates below bring them to the latest versions.
-    run_cmd "Brenner Bot" update_run_verified_installer brenner_bot --skip-cass
+    # Brenner Bot - skip all toolchain deps (NTM, CASS, CM) because ACFS
+    # installs/updates them individually below.  Previously only --skip-cass
+    # was passed, causing brenner's install_toolchain() to redundantly rebuild
+    # NTM and CM from source — a 5+ hour hang on slow machines (fixes #210).
+    run_cmd "Brenner Bot" update_run_verified_installer brenner_bot --skip-ntm --skip-cass --skip-cm
 
     # NTM - always install/update (installer is idempotent)
     run_cmd "NTM" update_run_verified_installer ntm
