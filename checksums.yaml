@@ -1,4 +1,4 @@
-# checksums.yaml - Auto-generated 2026-03-10T18:55:12+00:00
+# checksums.yaml - Auto-generated 2026-03-12T15:28:28+00:00
 # Run: ./scripts/lib/security.sh --update-checksums
 
 installers:
@@ -58,13 +58,13 @@ installers:
     url: "https://raw.githubusercontent.com/Dicklesworthstone/destructive_command_guard/main/install.sh"
     sha256: "2d0683fc5417a391024aed70e351724c2401e2c651507f52bd41db1dbde2728e"
 
-  gemini_patch:
-    url: "https://raw.githubusercontent.com/Dicklesworthstone/misc_coding_agent_tips_and_scripts/main/fix-gemini-cli-ebadf-crash.sh"
-    sha256: "990255cee059032dea551605cceec042bf25aa5648aa62c4166ca7ec3e14b120"
-
   fsfs:
     url: "https://raw.githubusercontent.com/Dicklesworthstone/frankensearch/main/install.sh"
     sha256: "a4499e4e58be7e4f10f9bab0468195cda30e97e280e90f01cba1cb979d5f125c"
+
+  gemini_patch:
+    url: "https://raw.githubusercontent.com/Dicklesworthstone/misc_coding_agent_tips_and_scripts/main/fix-gemini-cli-ebadf-crash.sh"
+    sha256: "990255cee059032dea551605cceec042bf25aa5648aa62c4166ca7ec3e14b120"
 
   giil:
     url: "https://raw.githubusercontent.com/Dicklesworthstone/giil/main/install.sh"
@@ -120,15 +120,15 @@ installers:
 
   rust:
     url: "https://sh.rustup.rs"
-    sha256: "17247e4bcacf6027ec2e11c79a72c494c9af69ac8d1abcc1b271fa4375a106c2"
-
-  sbh:
-    url: "https://raw.githubusercontent.com/Dicklesworthstone/storage_ballast_helper/main/scripts/install.sh"
-    sha256: "dca19c4841d8a4bf1f08fa641e8f9d4c55b3b4c1df5154b95813c8ba65f9f557"
+    sha256: "6c30b75a75b28a96fd913a037c8581b580080b6ee9b8169a3c0feb1af7fe8caf"
 
   s2p:
     url: "https://raw.githubusercontent.com/Dicklesworthstone/source_to_prompt_tui/main/install.sh"
     sha256: "5b563a0e84277ac81837611bf126c1d4f015055de17330a75670ccc7258d57eb"
+
+  sbh:
+    url: "https://raw.githubusercontent.com/Dicklesworthstone/storage_ballast_helper/main/scripts/install.sh"
+    sha256: "dca19c4841d8a4bf1f08fa641e8f9d4c55b3b4c1df5154b95813c8ba65f9f557"
 
   slb:
     url: "https://raw.githubusercontent.com/Dicklesworthstone/simultaneous_launch_button/main/scripts/install.sh"
