@@ -1,6 +1,6 @@
 /**
  * Tests: Verify all 9 new Dicklesworthstone tools have complete manifest entries
- * Related: bead bd-005f0
+ * Related: bead bd-bd536
  *
  * Parses the real acfs.manifest.yaml and checks each tool has:
  *   - Correct module ID and description
