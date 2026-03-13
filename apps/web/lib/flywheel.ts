@@ -2052,13 +2052,23 @@ export const flywheelTools: FlywheelTool[] = _flywheelTools.map((tool) => {
   };
 });
 
+export const flywheelToolCount = flywheelTools.length;
+export const flywheelTotalStars = flywheelTools.reduce(
+  (sum, tool) => sum + (tool.stars ?? 0),
+  0
+);
+export const flywheelTotalStarsLabel = new Intl.NumberFormat("en", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+}).format(flywheelTotalStars);
+
 // ============================================================
 // FLYWHEEL DESCRIPTION - The big picture
 // ============================================================
 
 export const flywheelDescription = {
   title: "The Agentic Coding Flywheel",
-  subtitle: "Twenty tools that create unheard-of velocity",
+  subtitle: `${flywheelToolCount} tools that create unheard-of velocity`,
   description:
     "A self-reinforcing system that enables multiple AI agents to work in parallel across 10+ projects, reviewing each other's work, creating and executing tasks, and making incredible autonomous progress while you're away.",
   philosophy: [
@@ -2084,8 +2094,8 @@ export const flywheelDescription = {
     },
   ],
   metrics: {
-    totalStars: "2K+",
-    toolCount: flywheelTools.length,
+    totalStars: flywheelTotalStarsLabel,
+    toolCount: flywheelToolCount,
     languages: ["Go", "Rust", "TypeScript", "Python", "Bash"],
     avgInstallTime: "< 30s each",
     projectsSimultaneous: "8+",

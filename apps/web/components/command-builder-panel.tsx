@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Terminal,
   Link2,
@@ -57,6 +57,15 @@ function CommandRow({
   runLocation: "local" | "vps";
 }) {
   const [copied, setCopied] = useState(false);
+  const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyResetTimerRef.current) {
+        clearTimeout(copyResetTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleCopy = useCallback(async () => {
     let copiedOk = false;
@@ -69,15 +78,26 @@ function CommandRow({
       ta.style.position = "fixed";
       ta.style.opacity = "0";
       document.body.appendChild(ta);
-      ta.select();
-      copiedOk = document.execCommand("copy");
-      document.body.removeChild(ta);
+      try {
+        ta.select();
+        copiedOk = document.execCommand("copy");
+      } catch {
+        copiedOk = false;
+      } finally {
+        document.body.removeChild(ta);
+      }
     }
     if (!copiedOk) {
       return;
     }
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (copyResetTimerRef.current) {
+      clearTimeout(copyResetTimerRef.current);
+    }
+    copyResetTimerRef.current = setTimeout(() => {
+      setCopied(false);
+      copyResetTimerRef.current = null;
+    }, 2000);
   }, [command]);
 
   return (
@@ -154,8 +174,17 @@ export function CommandBuilderPanel() {
   const [ref, setRef] = useACFSRef();
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const shareResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [localIP, setLocalIP] = useState("");
   const [ipError, setIpError] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (shareResetTimerRef.current) {
+        clearTimeout(shareResetTimerRef.current);
+      }
+    };
+  }, []);
 
   const effectiveIP = vpsIP || (isValidIP(localIP) ? localIP : "");
   const effectiveOS = os || "mac";
@@ -196,19 +225,26 @@ export function CommandBuilderPanel() {
       ta.style.position = "fixed";
       ta.style.opacity = "0";
       document.body.appendChild(ta);
-      ta.select();
       try {
+        ta.select();
         copied = document.execCommand("copy");
       } catch {
         copied = false;
+      } finally {
+        document.body.removeChild(ta);
       }
-      document.body.removeChild(ta);
     }
     if (!copied) {
       return;
     }
     setShareCopied(true);
-    setTimeout(() => setShareCopied(false), 2000);
+    if (shareResetTimerRef.current) {
+      clearTimeout(shareResetTimerRef.current);
+    }
+    shareResetTimerRef.current = setTimeout(() => {
+      setShareCopied(false);
+      shareResetTimerRef.current = null;
+    }, 2000);
   }, [effectiveIP, effectiveOS, username, mode, ref]);
 
   const handleIPChange = useCallback(
@@ -331,7 +367,7 @@ export function CommandBuilderPanel() {
               className="mt-1 w-full rounded-md border border-border/50 bg-muted/40 px-3 py-1.5 font-mono text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
             {refError && (
-              <p className="mt-1 text-xs text-[oklch(0.72_0.19_145)]">{refError}</p>
+              <p className="mt-1 text-xs text-destructive">{refError}</p>
             )}
           </div>
         </div>

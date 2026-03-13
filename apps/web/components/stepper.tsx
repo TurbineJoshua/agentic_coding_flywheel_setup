@@ -36,6 +36,8 @@ function StepItem({
   isClickable,
   onClick,
 }: StepItemProps) {
+  const showCompletedState = isCompleted && !isActive;
+
   return (
     <button
       type="button"
@@ -56,12 +58,12 @@ function StepItem({
       <div
         className={cn(
           "relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-medium transition-all duration-300",
-          isCompleted && "bg-[oklch(0.72_0.19_145)] text-[oklch(0.15_0.02_145)] shadow-sm shadow-[oklch(0.72_0.19_145/0.3)]",
-          isActive && !isCompleted && "bg-primary text-primary-foreground shadow-sm shadow-primary/30 animate-glow-pulse",
-          !isActive && !isCompleted && "bg-muted text-muted-foreground"
+          showCompletedState && "bg-[oklch(0.72_0.19_145)] text-[oklch(0.15_0.02_145)] shadow-sm shadow-[oklch(0.72_0.19_145/0.3)]",
+          isActive && "bg-primary text-primary-foreground shadow-sm shadow-primary/30 animate-glow-pulse",
+          !isActive && !showCompletedState && "bg-muted text-muted-foreground"
         )}
       >
-        {isCompleted ? (
+        {showCompletedState ? (
           <Check className="h-4 w-4" strokeWidth={2.5} />
         ) : isActive ? (
           <Circle className="h-3 w-3 fill-current" />
@@ -76,8 +78,8 @@ function StepItem({
           className={cn(
             "truncate text-sm font-medium transition-colors",
             isActive && "text-foreground",
-            isCompleted && "text-muted-foreground",
-            !isActive && !isCompleted && "text-muted-foreground"
+            showCompletedState && "text-muted-foreground",
+            !isActive && !showCompletedState && "text-muted-foreground"
           )}
         >
           {step.title}
@@ -85,7 +87,7 @@ function StepItem({
         {isActive && (
           <div className="mt-0.5 text-xs text-primary">In progress</div>
         )}
-        {isCompleted && (
+        {showCompletedState && (
           <div className="mt-0.5 text-xs text-[oklch(0.72_0.19_145)]">Complete</div>
         )}
       </div>
@@ -214,6 +216,7 @@ export function StepperMobile({
         {WIZARD_STEPS.map((step) => {
           const isActive = step.id === currentStep;
           const isCompleted = completedSteps.includes(step.id);
+          const showCompletedState = isCompleted && !isActive;
           const isClickable = isCompleted || step.id <= highestCompleted + 1;
 
           return (
@@ -236,9 +239,9 @@ export function StepperMobile({
               <motion.div
                 className={cn(
                   "rounded-full transition-colors",
-                  isCompleted && "bg-[oklch(0.72_0.19_145)]",
-                  isActive && !isCompleted && "bg-primary",
-                  !isActive && !isCompleted && "bg-muted-foreground/30"
+                  showCompletedState && "bg-[oklch(0.72_0.19_145)]",
+                  isActive && "bg-primary",
+                  !isActive && !showCompletedState && "bg-muted-foreground/30"
                 )}
                 initial={false}
                 animate={{
@@ -267,7 +270,7 @@ export function StepperMobile({
               )}
 
               {/* Completed checkmark overlay */}
-              {isCompleted && (
+              {showCompletedState && (
                 <motion.div
                   className="absolute flex items-center justify-center"
                   initial={{ scale: 0 }}

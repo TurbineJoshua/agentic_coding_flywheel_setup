@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { Copy, Check } from "lucide-react";
 import { motion, useReducedMotion, useInView } from "framer-motion";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
@@ -8,6 +8,7 @@ import { TldrHero } from "@/components/tldr/tldr-hero";
 import { TldrToolGrid } from "@/components/tldr/tldr-tool-grid";
 import { TldrSynergyDiagram } from "@/components/tldr/tldr-synergy-diagram";
 import { tldrFlywheelTools, tldrPageData } from "@/lib/tldr-content";
+import { copyTextToClipboard } from "@/lib/utils";
 
 // =============================================================================
 // FLYWHEEL EXPLANATION SECTION
@@ -81,15 +82,29 @@ const INSTALL_COMMAND = `curl -fsSL https://raw.githubusercontent.com/Dickleswor
 
 function FooterCTA({ id }: { id?: string }) {
   const [copied, setCopied] = useState(false);
+  const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyResetTimerRef.current) {
+        clearTimeout(copyResetTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(INSTALL_COMMAND);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Silently fail - clipboard API may not be available
+    const copiedOk = await copyTextToClipboard(INSTALL_COMMAND);
+    if (!copiedOk) {
+      return;
     }
+    setCopied(true);
+    if (copyResetTimerRef.current) {
+      clearTimeout(copyResetTimerRef.current);
+    }
+    copyResetTimerRef.current = setTimeout(() => {
+      setCopied(false);
+      copyResetTimerRef.current = null;
+    }, 2000);
   }, []);
 
   return (

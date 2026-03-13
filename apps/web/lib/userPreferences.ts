@@ -25,6 +25,7 @@ const SSH_USERNAME_QUERY_KEY = "user";
 const ACFS_REF_QUERY_KEY = "ref";
 const MAX_GIT_REF_LENGTH = 120;
 const GIT_REF_SAFE_PATTERN = /^[A-Za-z0-9._/-]+$/;
+const USER_PREFERENCES_EVENT = "acfs:user-preferences-updated";
 
 function getQueryParam(key: string): string | null {
   if (typeof window === "undefined") return null;
@@ -49,6 +50,27 @@ function setQueryParam(key: string, value: string | null): boolean {
   } catch {
     return false;
   }
+}
+
+function emitUserPreferencesUpdate() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(USER_PREFERENCES_EVENT));
+}
+
+function subscribeToUserPreferencesUpdates(onChange: () => void): () => void {
+  if (typeof window === "undefined") {
+    return () => undefined;
+  }
+
+  window.addEventListener(USER_PREFERENCES_EVENT, onChange);
+  window.addEventListener("storage", onChange);
+  window.addEventListener("popstate", onChange);
+
+  return () => {
+    window.removeEventListener(USER_PREFERENCES_EVENT, onChange);
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener("popstate", onChange);
+  };
 }
 
 /**
@@ -104,6 +126,9 @@ export function getUserOS(): OperatingSystem | null {
 export function setUserOS(os: OperatingSystem): boolean {
   const storedOk = safeSetItem(OS_KEY, os);
   const urlOk = setQueryParam(OS_QUERY_KEY, os);
+  if (storedOk || urlOk) {
+    emitUserPreferencesUpdate();
+  }
   return storedOk || urlOk;
 }
 
@@ -161,6 +186,9 @@ export function setVPSIP(ip: string): boolean {
   }
   const storedOk = safeSetItem(VPS_IP_KEY, normalized);
   const urlOk = setQueryParam(VPS_IP_QUERY_KEY, normalized);
+  if (storedOk || urlOk) {
+    emitUserPreferencesUpdate();
+  }
   return storedOk || urlOk;
 }
 
@@ -212,13 +240,18 @@ export function useUserOS(): [OperatingSystem | null, (os: OperatingSystem) => v
   }>({ os: null, loaded: false });
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage access must happen after mount (SSR-safe)
-    setUserOSState({ os: getUserOS(), loaded: true });
+    const syncState = () => {
+      setUserOSState({ os: getUserOS(), loaded: true });
+    };
+
+    syncState();
+    return subscribeToUserPreferencesUpdates(syncState);
   }, []);
 
   const setOS = useCallback((newOS: OperatingSystem) => {
-    setUserOS(newOS);
-    setUserOSState({ os: newOS, loaded: true });
+    if (setUserOS(newOS)) {
+      setUserOSState({ os: getUserOS(), loaded: true });
+    }
   }, []);
 
   return [userOSState.os, setOS, userOSState.loaded];
@@ -235,8 +268,12 @@ export function useVPSIP(): [string | null, (ip: string) => void, boolean] {
   }>({ ip: null, loaded: false });
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage access must happen after mount (SSR-safe)
-    setVpsIPState({ ip: getVPSIP(), loaded: true });
+    const syncState = () => {
+      setVpsIPState({ ip: getVPSIP(), loaded: true });
+    };
+
+    syncState();
+    return subscribeToUserPreferencesUpdates(syncState);
   }, []);
 
   const setIP = useCallback((newIP: string) => {
@@ -292,6 +329,9 @@ export function getInstallMode(): InstallMode {
 export function setInstallMode(mode: InstallMode): boolean {
   const storedOk = safeSetItem(INSTALL_MODE_KEY, mode);
   const urlOk = setQueryParam(INSTALL_MODE_QUERY_KEY, mode);
+  if (storedOk || urlOk) {
+    emitUserPreferencesUpdate();
+  }
   return storedOk || urlOk;
 }
 
@@ -302,13 +342,18 @@ export function useInstallMode(): [InstallMode, (mode: InstallMode) => void, boo
   });
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage access must happen after mount (SSR-safe)
-    setState({ mode: getInstallMode(), loaded: true });
+    const syncState = () => {
+      setState({ mode: getInstallMode(), loaded: true });
+    };
+
+    syncState();
+    return subscribeToUserPreferencesUpdates(syncState);
   }, []);
 
   const setMode = useCallback((newMode: InstallMode) => {
-    setInstallMode(newMode);
-    setState({ mode: newMode, loaded: true });
+    if (setInstallMode(newMode)) {
+      setState({ mode: getInstallMode(), loaded: true });
+    }
   }, []);
 
   return [state.mode, setMode, state.loaded];
@@ -329,6 +374,9 @@ export function setSSHUsername(username: string): boolean {
   if (!trimmed || !/^[a-zA-Z_][a-zA-Z0-9_-]*$/.test(trimmed)) return false;
   const storedOk = safeSetItem(SSH_USERNAME_KEY, trimmed);
   const urlOk = setQueryParam(SSH_USERNAME_QUERY_KEY, trimmed === "ubuntu" ? null : trimmed);
+  if (storedOk || urlOk) {
+    emitUserPreferencesUpdate();
+  }
   return storedOk || urlOk;
 }
 
@@ -339,13 +387,17 @@ export function useSSHUsername(): [string, (username: string) => void, boolean] 
   });
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage access must happen after mount (SSR-safe)
-    setState({ username: getSSHUsername(), loaded: true });
+    const syncState = () => {
+      setState({ username: getSSHUsername(), loaded: true });
+    };
+
+    syncState();
+    return subscribeToUserPreferencesUpdates(syncState);
   }, []);
 
   const setUsername = useCallback((newUsername: string) => {
     if (setSSHUsername(newUsername)) {
-      setState({ username: newUsername.trim(), loaded: true });
+      setState({ username: getSSHUsername(), loaded: true });
     }
   }, []);
 
@@ -366,6 +418,9 @@ export function setACFSRef(ref: string | null): boolean {
     ? safeSetItem(ACFS_REF_KEY, value)
     : safeSetItem(ACFS_REF_KEY, "");
   const urlOk = setQueryParam(ACFS_REF_QUERY_KEY, value);
+  if (storedOk || urlOk) {
+    emitUserPreferencesUpdate();
+  }
   return storedOk || urlOk;
 }
 
@@ -376,13 +431,18 @@ export function useACFSRef(): [string | null, (ref: string | null) => void, bool
   });
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage access must happen after mount (SSR-safe)
-    setState({ ref: getACFSRef(), loaded: true });
+    const syncState = () => {
+      setState({ ref: getACFSRef(), loaded: true });
+    };
+
+    syncState();
+    return subscribeToUserPreferencesUpdates(syncState);
   }, []);
 
   const setRef = useCallback((newRef: string | null) => {
-    setACFSRef(newRef);
-    setState({ ref: newRef?.trim() || null, loaded: true });
+    if (setACFSRef(newRef)) {
+      setState({ ref: getACFSRef(), loaded: true });
+    }
   }, []);
 
   return [state.ref, setRef, state.loaded];

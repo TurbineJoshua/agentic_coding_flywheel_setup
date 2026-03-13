@@ -1,4 +1,5 @@
-import { manifestCommands } from './generated/manifest-web-index';
+import { lessonSlugByModuleId, manifestCommands } from './generated/manifest-web-index';
+import type { ManifestCommand } from './generated/manifest-web-index';
 
 export type CommandCategory =
   | "agents"
@@ -17,6 +18,41 @@ export interface CommandRef {
   example: string;
   aliases?: string[];
   docsUrl?: string;
+}
+
+const manifestCommandsByCliName = new Map<string, ManifestCommand>(
+  manifestCommands.map((command) => [command.cliName, command]),
+);
+
+export function getManifestCommandByCliName(name: string): ManifestCommand | undefined {
+  return manifestCommandsByCliName.get(name);
+}
+
+export function getManifestCommandDocsUrl(moduleId: string): string | undefined {
+  const lessonSlug = lessonSlugByModuleId[moduleId];
+  if (lessonSlug) {
+    return `/learn/tools/${lessonSlug}`;
+  }
+  return manifestCommands.find((command) => command.moduleId === moduleId)?.docsUrl;
+}
+
+function mergeCommandWithManifest(command: CommandRef): CommandRef {
+  const manifestCommand = getManifestCommandByCliName(command.name);
+  if (!manifestCommand) {
+    return command;
+  }
+
+  return {
+    ...command,
+    example: manifestCommand.commandExample ?? command.example,
+    aliases:
+      command.aliases && command.aliases.length > 0
+        ? command.aliases
+        : manifestCommand.cliAliases.length > 0
+          ? manifestCommand.cliAliases
+          : undefined,
+    docsUrl: command.docsUrl ?? getManifestCommandDocsUrl(manifestCommand.moduleId),
+  };
 }
 
 export const COMMAND_CATEGORIES: Array<{
@@ -138,8 +174,9 @@ export const COMMANDS: CommandRef[] = [
     name: "ntm",
     fullName: "Named Tmux Manager",
     description: "Session management for agents and workflows.",
-    category: "system",
+    category: "stack",
     example: "ntm new acfs",
+    docsUrl: "/learn/ntm-palette",
   },
   {
     name: "tmux",
@@ -199,6 +236,7 @@ export const COMMANDS: CommandRef[] = [
     description: "Task graph management.",
     category: "stack",
     example: "br ready",
+    docsUrl: "/learn/beads",
   },
   {
     name: "bv",
@@ -206,6 +244,7 @@ export const COMMANDS: CommandRef[] = [
     description: "Issue and workflow viewer (use --robot-* flags).",
     category: "stack",
     example: "bv --robot-triage",
+    docsUrl: "/learn/bv",
   },
   {
     name: "ms",
@@ -214,6 +253,7 @@ export const COMMANDS: CommandRef[] = [
     category: "stack",
     example: "ms search 'auth flow'",
     aliases: ["meta-skill"],
+    docsUrl: "/learn/tools/ms",
   },
   {
     name: "ubs",
@@ -221,6 +261,7 @@ export const COMMANDS: CommandRef[] = [
     description: "Static analysis with guardrails.",
     category: "stack",
     example: "ubs .",
+    docsUrl: "/learn/tools/ubs",
   },
   {
     name: "cass",
@@ -228,6 +269,7 @@ export const COMMANDS: CommandRef[] = [
     description: "Session search across agents.",
     category: "stack",
     example: "cass health",
+    docsUrl: "/learn/tools/cass",
   },
   {
     name: "cm",
@@ -235,6 +277,7 @@ export const COMMANDS: CommandRef[] = [
     description: "Procedural memory for agent workflows.",
     category: "stack",
     example: 'cm context "auth flow"',
+    docsUrl: "/learn/tools/cm",
   },
   {
     name: "caam",
@@ -242,6 +285,7 @@ export const COMMANDS: CommandRef[] = [
     description: "Agent account manager.",
     category: "stack",
     example: "caam status",
+    docsUrl: "/learn/tools/caam",
   },
   {
     name: "slb",
@@ -249,6 +293,7 @@ export const COMMANDS: CommandRef[] = [
     description: "Two-person rule for dangerous commands.",
     category: "stack",
     example: "slb",
+    docsUrl: "/learn/tools/slb",
   },
   {
     name: "dcg",
@@ -257,6 +302,7 @@ export const COMMANDS: CommandRef[] = [
     category: "stack",
     example: "dcg test 'rm -rf /'",
     aliases: ["destructive-command-guard"],
+    docsUrl: "/learn/tools/dcg",
   },
   {
     name: "ru",
@@ -265,6 +311,7 @@ export const COMMANDS: CommandRef[] = [
     category: "stack",
     example: "ru sync -j4",
     aliases: ["repo-updater"],
+    docsUrl: "/learn/tools/ru",
   },
   {
     name: "am",
@@ -272,6 +319,7 @@ export const COMMANDS: CommandRef[] = [
     description: "Agent coordination and messaging.",
     category: "stack",
     example: "am status",
+    docsUrl: "/learn/tools/agent-mail",
   },
   {
     name: "apr",
@@ -280,6 +328,7 @@ export const COMMANDS: CommandRef[] = [
     category: "stack",
     example: "apr refine plan.md",
     aliases: ["automated-plan-reviser"],
+    docsUrl: "/learn/tools/apr",
   },
   {
     name: "jfp",
@@ -288,7 +337,7 @@ export const COMMANDS: CommandRef[] = [
     category: "stack",
     example: "jfp install idea-wizard",
     aliases: ["jeffreysprompts"],
-    docsUrl: "https://jeffreysprompts.com",
+    docsUrl: "/learn/tools/jfp",
   },
   {
     name: "pt",
@@ -297,6 +346,7 @@ export const COMMANDS: CommandRef[] = [
     category: "stack",
     example: "pt",
     aliases: ["process-triage"],
+    docsUrl: "/learn/tools/pt",
   },
   {
     name: "sysmoni",
@@ -304,7 +354,7 @@ export const COMMANDS: CommandRef[] = [
     description: "Real-time TUI showing CPU/memory per process with ananicy rule status.",
     category: "stack",
     example: "sysmoni",
-    docsUrl: "https://github.com/Dicklesworthstone/system_resource_protection_script",
+    docsUrl: "/learn/tools/srps",
   },
   {
     name: "xf",
@@ -312,7 +362,7 @@ export const COMMANDS: CommandRef[] = [
     description: "Blazingly fast local search across your X/Twitter archive.",
     category: "stack",
     example: 'xf search "machine learning"',
-    docsUrl: "https://github.com/Dicklesworthstone/xf",
+    docsUrl: "/learn/tools/xf",
   },
   {
     name: "bun",
@@ -379,20 +429,38 @@ export const COMMANDS: CommandRef[] = [
   },
 ];
 
+function mapGeneratedCategoryToCommandCategory(moduleCategory: string): CommandCategory {
+  switch (moduleCategory) {
+    case "agents":
+      return "agents";
+    case "cloud":
+    case "db":
+      return "cloud";
+    case "lang":
+      return "languages";
+    case "stack":
+    case "tools":
+      return "stack";
+    default:
+      return "system";
+  }
+}
+
 // Auto-merge any manifest-defined commands not already in the hand-maintained list.
 // This ensures new tools added to acfs.manifest.yaml appear automatically.
-const _handMaintainedNames = new Set(COMMANDS.map((c) => c.name));
+const _mergedHandMaintainedCommands = COMMANDS.map(mergeCommandWithManifest);
+const _handMaintainedNames = new Set(_mergedHandMaintainedCommands.map((c) => c.name));
 const _generatedExtras: CommandRef[] = manifestCommands
   .filter((mc) => !_handMaintainedNames.has(mc.cliName))
   .map((mc) => ({
     name: mc.cliName,
-    fullName: mc.description.split(" - ")[0] || mc.cliName,
+    fullName: mc.displayName,
     description: mc.description,
-    category: "stack" as CommandCategory,
+    category: mapGeneratedCategoryToCommandCategory(mc.moduleCategory),
     example: mc.commandExample ?? `${mc.cliName} --help`,
     aliases: mc.cliAliases.length > 0 ? mc.cliAliases : undefined,
-    docsUrl: mc.docsUrl,
+    docsUrl: getManifestCommandDocsUrl(mc.moduleId),
   }));
 
 /** All commands: hand-maintained + auto-discovered from manifest. */
-export const ALL_COMMANDS: CommandRef[] = [...COMMANDS, ..._generatedExtras];
+export const ALL_COMMANDS: CommandRef[] = [..._mergedHandMaintainedCommands, ..._generatedExtras];

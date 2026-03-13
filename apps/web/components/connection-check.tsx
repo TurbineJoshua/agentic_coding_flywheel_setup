@@ -1,11 +1,16 @@
 "use client";
 
 import { AlertCircle, Monitor, Server, ArrowRight, Terminal, HelpCircle } from "lucide-react";
+import { formatSshTarget } from "@/lib/commandBuilder";
 import { cn } from "@/lib/utils";
 
 interface ConnectionCheckProps {
   /** The VPS IP address to show in examples */
   vpsIP?: string;
+  /** The SSH username to show in reconnect examples */
+  sshUser?: string;
+  /** Whether the reconnect example should use the generated SSH key */
+  useIdentityFile?: boolean;
   /** Additional class names */
   className?: string;
   /** Whether to show the "Two Computers" explainer */
@@ -20,10 +25,23 @@ interface ConnectionCheckProps {
  */
 export function ConnectionCheck({
   vpsIP = "YOUR_VPS_IP",
+  sshUser = "ubuntu",
+  useIdentityFile = true,
   className,
   showExplainer = false,
   showWhereAmI = true,
 }: ConnectionCheckProps) {
+  const sshTarget = formatSshTarget(sshUser, vpsIP);
+  const promptSuffix = sshUser === "root" ? "#" : "$";
+  const alternatePrompt =
+    sshUser === "root" ? "ubuntu@vps:~$" : "root@vps:~#";
+  const sshCommand = useIdentityFile
+    ? `ssh -i ~/.ssh/acfs_ed25519 ${sshTarget}`
+    : `ssh ${sshTarget}`;
+  const windowsSshCommand = useIdentityFile
+    ? `ssh -i $HOME\\.ssh\\acfs_ed25519 ${sshTarget}`
+    : `ssh ${sshTarget}`;
+
   return (
     <div className={cn("space-y-4", className)}>
       {/* Main Warning */}
@@ -65,11 +83,11 @@ export function ConnectionCheck({
                   <span>Correct - You&apos;re on the VPS</span>
                 </div>
                 <div className="mt-2 rounded bg-[oklch(0.12_0.01_260)] px-3 py-2 font-mono text-xs">
-                  <span className="text-[oklch(0.72_0.19_145)]">ubuntu@vps:~$</span>
+                  <span className="text-[oklch(0.72_0.19_145)]">{sshUser}@vps:~{promptSuffix}</span>
                   <span className="animate-pulse"> _</span>
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  or: <code className="text-foreground/70">root@vps:~#</code>
+                  or: <code className="text-foreground/70">{alternatePrompt}</code>
                 </p>
               </div>
             </div>
@@ -78,10 +96,10 @@ export function ConnectionCheck({
             <div className="rounded-lg border border-border/50 bg-card/50 p-3">
               <p className="text-sm font-medium">Not connected? Run this first:</p>
               <code className="mt-2 block overflow-x-auto rounded bg-muted px-3 py-2 font-mono text-xs">
-                ssh -i ~/.ssh/acfs_ed25519 ubuntu@{vpsIP}
+                {sshCommand}
               </code>
               <p className="mt-2 text-xs text-muted-foreground">
-                On Windows: <code className="text-foreground/70">ssh -i $HOME\.ssh\acfs_ed25519 ubuntu@{vpsIP}</code>
+                On Windows: <code className="text-foreground/70">{windowsSshCommand}</code>
               </p>
             </div>
           </div>

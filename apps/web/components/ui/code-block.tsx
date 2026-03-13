@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback, type ReactNode } from "react";
+import { useState, useCallback, useEffect, useRef, type ReactNode } from "react";
 import { Copy, Check, Terminal } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, copyTextToClipboard } from "@/lib/utils";
 
 // =============================================================================
 // COPY-TO-CLIPBOARD HOOK
@@ -10,24 +10,31 @@ import { cn } from "@/lib/utils";
 
 function useCopyToClipboard(resetMs = 2000) {
   const [copied, setCopied] = useState(false);
+  const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (resetTimerRef.current) {
+        clearTimeout(resetTimerRef.current);
+      }
+    };
+  }, []);
 
   const copy = useCallback(
     async (text: string) => {
-      try {
-        await navigator.clipboard.writeText(text);
-      } catch {
-        // Fallback for older browsers / denied permission
-        const textarea = document.createElement("textarea");
-        textarea.value = text;
-        textarea.style.position = "fixed";
-        textarea.style.opacity = "0";
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textarea);
+      const copiedOk = await copyTextToClipboard(text);
+      if (!copiedOk) {
+        return;
       }
+
       setCopied(true);
-      setTimeout(() => setCopied(false), resetMs);
+      if (resetTimerRef.current) {
+        clearTimeout(resetTimerRef.current);
+      }
+      resetTimerRef.current = setTimeout(() => {
+        setCopied(false);
+        resetTimerRef.current = null;
+      }, resetMs);
     },
     [resetMs],
   );

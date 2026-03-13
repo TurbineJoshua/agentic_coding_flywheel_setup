@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   Terminal,
@@ -12,14 +12,6 @@ import {
   Layers,
   Workflow,
   ExternalLink,
-  LayoutGrid,
-  ShieldAlert,
-  ShieldCheck,
-  Mail,
-  Bug,
-  Brain,
-  Search,
-  KeyRound,
   Star,
   Copy,
   Check,
@@ -32,12 +24,16 @@ import {
   Code2,
   ChevronDown,
   ArrowRight,
-  GitMerge,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import FlywheelVisualization from "@/components/flywheel-visualization";
+import FlywheelVisualization, {
+  flywheelIconMap,
+} from "@/components/flywheel-visualization";
+import { copyTextToClipboard } from "@/lib/utils";
 import {
   flywheelTools,
+  flywheelToolCount,
+  flywheelTotalStarsLabel,
   workflowScenarios,
   agentPrompts,
   synergyExplanations,
@@ -45,23 +41,6 @@ import {
   type WorkflowScenario,
   type AgentPrompt,
 } from "@/lib/flywheel";
-
-// ============================================================
-// ICON MAPPING
-// ============================================================
-
-const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  LayoutGrid,
-  ShieldAlert,
-  ShieldCheck,
-  Mail,
-  GitBranch,
-  GitMerge,
-  Bug,
-  Brain,
-  Search,
-  KeyRound,
-};
 
 // ============================================================
 // HERO SECTION
@@ -103,7 +82,7 @@ function HeroSection() {
           className="mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg lg:text-xl opacity-0 animate-slide-up"
           style={{ animationDelay: "0.3s", animationFillMode: "forwards" }}
         >
-          Twenty interconnected tools that enable multiple AI agents to work in parallel,
+          {flywheelToolCount} interconnected tools that enable multiple AI agents to work in parallel,
           review each other&apos;s work, and make incredible autonomous progress,
           all <span className="text-foreground font-medium">while you&apos;re away</span>.
         </p>
@@ -152,7 +131,7 @@ function HeroSection() {
               <Star className="h-5 w-5 text-amber-400 sm:h-6 sm:w-6" />
             </div>
             <div>
-              <p className="text-xl font-bold text-foreground sm:text-2xl">2K+</p>
+              <p className="text-xl font-bold text-foreground sm:text-2xl">{flywheelTotalStarsLabel}</p>
               <p className="text-[12px] text-muted-foreground sm:text-sm">GitHub stars</p>
             </div>
           </div>
@@ -202,7 +181,7 @@ function WorkflowCard({ scenario, index }: { scenario: WorkflowScenario; index: 
           {scenario.steps.map((step, i) => {
             const tool = flywheelTools.find((t) => t.id === step.tool);
             if (!tool) return null;
-            const Icon = iconMap[tool.icon] || Zap;
+            const Icon = flywheelIconMap[tool.icon] || Zap;
             return (
               <div
                 key={i}
@@ -235,7 +214,7 @@ function WorkflowCard({ scenario, index }: { scenario: WorkflowScenario; index: 
             {scenario.steps.map((step, i) => {
               const tool = flywheelTools.find((t) => t.id === step.tool);
               if (!tool) return null;
-              const Icon = iconMap[tool.icon] || Zap;
+              const Icon = flywheelIconMap[tool.icon] || Zap;
 
               return (
                 <div key={i} className="flex gap-3 rounded-xl bg-muted/20 p-3">
@@ -304,29 +283,29 @@ function WorkflowSection() {
 
 function PromptCard({ prompt, index }: { prompt: AgentPrompt; index: number }) {
   const [copied, setCopied] = useState(false);
+  const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyResetTimerRef.current) {
+        clearTimeout(copyResetTimerRef.current);
+      }
+    };
+  }, []);
 
   const copyPrompt = async () => {
-    try {
-      await navigator.clipboard.writeText(prompt.prompt);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Fallback for older browsers or when clipboard permission is denied
-      const textArea = document.createElement("textarea");
-      textArea.value = prompt.prompt;
-      textArea.style.position = "fixed";
-      textArea.style.opacity = "0";
-      document.body.appendChild(textArea);
-      textArea.select();
-      try {
-        document.execCommand("copy");
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } catch {
-        // Silent fail - user can manually copy
-      }
-      document.body.removeChild(textArea);
+    const copiedOk = await copyTextToClipboard(prompt.prompt);
+    if (!copiedOk) {
+      return;
     }
+    setCopied(true);
+    if (copyResetTimerRef.current) {
+      clearTimeout(copyResetTimerRef.current);
+    }
+    copyResetTimerRef.current = setTimeout(() => {
+      setCopied(false);
+      copyResetTimerRef.current = null;
+    }, 2000);
   };
 
   const categoryColors: Record<string, string> = {
@@ -464,7 +443,7 @@ function SynergySection() {
                 {synergy.tools.map((toolId, i) => {
                   const tool = flywheelTools.find((t) => t.id === toolId);
                   if (!tool) return null;
-                  const Icon = iconMap[tool.icon] || Zap;
+                  const Icon = flywheelIconMap[tool.icon] || Zap;
                   return (
                     <div key={toolId} className="flex items-center">
                       {i > 0 && <span className="mx-1 text-muted-foreground">+</span>}
@@ -502,33 +481,33 @@ function SynergySection() {
 // ============================================================
 
 function ToolCard({ tool, index }: { tool: FlywheelTool; index: number }) {
-  const Icon = iconMap[tool.icon] || Zap;
+  const Icon = flywheelIconMap[tool.icon] || Zap;
   const [copied, setCopied] = useState(false);
+  const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyResetTimerRef.current) {
+        clearTimeout(copyResetTimerRef.current);
+      }
+    };
+  }, []);
 
   const copyInstall = async () => {
     if (!tool.installCommand) return;
 
-    try {
-      await navigator.clipboard.writeText(tool.installCommand);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Fallback for older browsers or when clipboard permission is denied
-      const textArea = document.createElement("textarea");
-      textArea.value = tool.installCommand;
-      textArea.style.position = "fixed";
-      textArea.style.opacity = "0";
-      document.body.appendChild(textArea);
-      textArea.select();
-      try {
-        document.execCommand("copy");
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } catch {
-        // Silent fail - user can manually copy
-      }
-      document.body.removeChild(textArea);
+    const copiedOk = await copyTextToClipboard(tool.installCommand);
+    if (!copiedOk) {
+      return;
     }
+    setCopied(true);
+    if (copyResetTimerRef.current) {
+      clearTimeout(copyResetTimerRef.current);
+    }
+    copyResetTimerRef.current = setTimeout(() => {
+      setCopied(false);
+      copyResetTimerRef.current = null;
+    }, 2000);
   };
 
   return (
@@ -634,7 +613,7 @@ function ToolsSection() {
             <div className="h-px w-8 bg-gradient-to-l from-transparent via-primary/50 to-transparent" />
           </div>
           <h2 className="font-mono text-2xl font-bold tracking-tight text-foreground sm:text-3xl lg:text-4xl">
-            All Twenty Flywheel Tools
+            All {flywheelToolCount} Flywheel Tools
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground lg:text-lg">
             Each tool installs in under 30 seconds. Written in Go, Rust, TypeScript, Python, and Bash.

@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import {
+  AlignLeft,
   Search,
   ExternalLink,
   Terminal,
@@ -16,6 +17,8 @@ import {
   GitBranch,
   FlaskConical,
   KeyRound,
+  BarChart3,
+  Minimize2,
   Brain,
   ShieldAlert,
   Sparkles,
@@ -23,14 +26,20 @@ import {
   LayoutGrid,
   Activity,
   Cpu,
+  Repeat,
   RefreshCw,
   ShieldCheck,
   Shield,
+  HardDrive,
   Bug,
   Monitor,
   Image,
   FileCode,
   Archive,
+  Package,
+  Save,
+  Globe,
+  Network,
   Box,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -44,11 +53,14 @@ import { manifestTools, type ManifestWebTool } from "@/lib/generated/manifest-we
 // =============================================================================
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  "align-left": AlignLeft,
+  "bar-chart-3": BarChart3,
   "file-text": FileText,
   "list-todo": ListTodo,
   "git-branch": GitBranch,
   "flask-conical": FlaskConical,
   "key-round": KeyRound,
+  "minimize-2": Minimize2,
   search: Search,
   brain: Brain,
   "shield-alert": ShieldAlert,
@@ -57,14 +69,20 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   "layout-grid": LayoutGrid,
   activity: Activity,
   cpu: Cpu,
+  repeat: Repeat,
   "refresh-cw": RefreshCw,
   "shield-check": ShieldCheck,
   shield: Shield,
+  "hard-drive": HardDrive,
   bug: Bug,
   monitor: Monitor,
   image: Image,
   "file-code": FileCode,
   archive: Archive,
+  package: Package,
+  save: Save,
+  globe: Globe,
+  network: Network,
 };
 
 function DynamicIcon({ name, className }: { name: string; className?: string }) {

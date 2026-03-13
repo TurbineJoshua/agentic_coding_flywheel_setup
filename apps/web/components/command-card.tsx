@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, Copy, Terminal, CheckCircle2, Server, Monitor } from "lucide-react";
 import { motion, AnimatePresence } from "@/components/motion";
@@ -38,6 +38,13 @@ type OS = "mac" | "windows" | "linux";
 type CheckedState = boolean | "indeterminate";
 
 const COMPLETION_KEY_PREFIX = "acfs-command-";
+export const COMMAND_COMPLETION_CHANGED_EVENT =
+  "acfs:command-completion-changed";
+
+type CommandCompletionChangedDetail = {
+  key: string;
+  completed: boolean;
+};
 
 // Query keys for TanStack Query
 export const commandCompletionKeys = {
@@ -53,8 +60,21 @@ function getCompletionFromStorage(key: string | null): boolean {
   return safeGetItem(key) === "true";
 }
 
+function emitCommandCompletionChanged(key: string, completed: boolean): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent<CommandCompletionChangedDetail>(
+      COMMAND_COMPLETION_CHANGED_EVENT,
+      {
+        detail: { key, completed },
+      }
+    )
+  );
+}
+
 function setCompletionInStorage(key: string, completed: boolean): void {
   safeSetItem(key, completed ? "true" : "false");
+  emitCommandCompletionChanged(key, completed);
 }
 
 /**
@@ -90,6 +110,7 @@ export function CommandCard({
 }: CommandCardProps) {
   const [copied, setCopied] = useState(false);
   const [copyAnimation, setCopyAnimation] = useState(false);
+  const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const queryClient = useQueryClient();
 
   const [storedOS] = useUserOS();
@@ -107,6 +128,48 @@ export function CommandCard({
     staleTime: Infinity,
     gcTime: Infinity,
   });
+
+  useEffect(() => {
+    if (!completionKey || typeof window === "undefined") return;
+
+    const queryKey = commandCompletionKeys.completion(completionKey);
+    const syncCompletion = (nextCompleted: boolean) => {
+      queryClient.setQueryData(queryKey, nextCompleted);
+    };
+
+    const handleCompletionChanged = (event: Event) => {
+      const customEvent = event as CustomEvent<CommandCompletionChangedDetail>;
+      if (customEvent.detail?.key !== completionKey) return;
+      syncCompletion(customEvent.detail.completed);
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== completionKey) return;
+      syncCompletion(event.newValue === "true");
+    };
+
+    window.addEventListener(
+      COMMAND_COMPLETION_CHANGED_EVENT,
+      handleCompletionChanged as EventListener
+    );
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      window.removeEventListener(
+        COMMAND_COMPLETION_CHANGED_EVENT,
+        handleCompletionChanged as EventListener
+      );
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, [completionKey, queryClient]);
+
+  useEffect(() => {
+    return () => {
+      if (copyResetTimerRef.current) {
+        clearTimeout(copyResetTimerRef.current);
+      }
+    };
+  }, []);
 
   const completionMutation = useMutation({
     mutationFn: async (isChecked: boolean) => {
@@ -132,22 +195,23 @@ export function CommandCard({
     return command;
   })();
 
+  const scheduleCopyReset = useCallback(() => {
+    if (copyResetTimerRef.current) {
+      clearTimeout(copyResetTimerRef.current);
+    }
+    copyResetTimerRef.current = setTimeout(() => {
+      setCopied(false);
+      setCopyAnimation(false);
+      copyResetTimerRef.current = null;
+    }, 2000);
+  }, []);
+
   const handleCopy = useCallback(async () => {
+    let copiedOk = false;
     setCopyAnimation(true);
     try {
       await navigator.clipboard.writeText(displayCommand);
-      setCopied(true);
-      // Track copy event for analytics
-      trackInteraction("copy", persistKey || "command-card", "command", {
-        command_length: displayCommand.length,
-        command_preview: displayCommand.slice(0, 50),
-        run_location: runLocation,
-        os,
-      });
-      setTimeout(() => {
-        setCopied(false);
-        setCopyAnimation(false);
-      }, 2000);
+      copiedOk = true;
     } catch {
       // Fallback for older browsers
       const textarea = document.createElement("textarea");
@@ -155,30 +219,37 @@ export function CommandCard({
       textarea.style.position = "fixed";
       textarea.style.opacity = "0";
       document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textarea);
-      setCopied(true);
-      // Track copy event for analytics (fallback path)
-      trackInteraction("copy", persistKey || "command-card", "command", {
-        command_length: displayCommand.length,
-        command_preview: displayCommand.slice(0, 50),
-        run_location: runLocation,
-        os,
-      });
-      setTimeout(() => {
-        setCopied(false);
-        setCopyAnimation(false);
-      }, 2000);
+      try {
+        textarea.select();
+        copiedOk = document.execCommand("copy");
+      } catch {
+        copiedOk = false;
+      } finally {
+        document.body.removeChild(textarea);
+      }
     }
-  }, [displayCommand, persistKey, runLocation, os]);
+    if (!copiedOk) {
+      setCopyAnimation(false);
+      return;
+    }
+    setCopied(true);
+    // Track copy event for analytics
+    trackInteraction("copy", persistKey || "command-card", "command", {
+      command_length: displayCommand.length,
+      command_preview: displayCommand.slice(0, 50),
+      run_location: runLocation,
+      os,
+    });
+    scheduleCopyReset();
+  }, [displayCommand, persistKey, runLocation, os, scheduleCopyReset]);
 
+  const { mutate: setCompletion } = completionMutation;
   const handleCheckboxChange = useCallback(
     (checked: CheckedState) => {
       const isChecked = checked === true;
-      completionMutation.mutate(isChecked);
+      setCompletion(isChecked);
     },
-    [completionMutation]
+    [setCompletion]
   );
 
   return (
@@ -331,17 +402,31 @@ export function CodeBlock({
   className?: string;
 }) {
   const [copied, setCopied] = useState(false);
+  const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyResetTimerRef.current) {
+        clearTimeout(copyResetTimerRef.current);
+      }
+    };
+  }, []);
+
+  const scheduleCopyReset = useCallback(() => {
+    if (copyResetTimerRef.current) {
+      clearTimeout(copyResetTimerRef.current);
+    }
+    copyResetTimerRef.current = setTimeout(() => {
+      setCopied(false);
+      copyResetTimerRef.current = null;
+    }, 2000);
+  }, []);
 
   const handleCopy = useCallback(async () => {
+    let copiedOk = false;
     try {
       await navigator.clipboard.writeText(code);
-      setCopied(true);
-      // Track copy event for analytics
-      trackInteraction("copy", `code-block-${language}`, "code-block", {
-        code_length: code.length,
-        language,
-      });
-      setTimeout(() => setCopied(false), 2000);
+      copiedOk = true;
     } catch {
       // Fallback
       const textarea = document.createElement("textarea");
@@ -349,18 +434,26 @@ export function CodeBlock({
       textarea.style.position = "fixed";
       textarea.style.opacity = "0";
       document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textarea);
-      setCopied(true);
-      // Track copy event for analytics (fallback path)
-      trackInteraction("copy", `code-block-${language}`, "code-block", {
-        code_length: code.length,
-        language,
-      });
-      setTimeout(() => setCopied(false), 2000);
+      try {
+        textarea.select();
+        copiedOk = document.execCommand("copy");
+      } catch {
+        copiedOk = false;
+      } finally {
+        document.body.removeChild(textarea);
+      }
     }
-  }, [code, language]);
+    if (!copiedOk) {
+      return;
+    }
+    setCopied(true);
+    // Track copy event for analytics
+    trackInteraction("copy", `code-block-${language}`, "code-block", {
+      code_length: code.length,
+      language,
+    });
+    scheduleCopyReset();
+  }, [code, language, scheduleCopyReset]);
 
   return (
     <div

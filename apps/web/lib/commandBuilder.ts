@@ -12,6 +12,7 @@ import { normalizeGitRef } from "./userPreferences";
 
 const INSTALL_SCRIPT_BASE_URL =
   "https://raw.githubusercontent.com/Dicklesworthstone/agentic_coding_flywheel_setup";
+const DEFAULT_INSTALL_REF = "main";
 
 export interface CommandBuilderInputs {
   ip: string;
@@ -40,6 +41,44 @@ function sshKeyPathWindows(): string {
   return "$HOME\\.ssh\\acfs_ed25519";
 }
 
+export function formatSshHost(host: string): string {
+  const normalized = host.trim();
+  if (
+    normalized.includes(":") &&
+    !normalized.startsWith("[") &&
+    !normalized.endsWith("]")
+  ) {
+    return `[${normalized}]`;
+  }
+  return normalized;
+}
+
+export function formatSshTarget(username: string, host: string): string {
+  return `${username}@${formatSshHost(host)}`;
+}
+
+function normalizeInstallUsername(username: string | null | undefined): string | null {
+  const trimmed = username?.trim() ?? "";
+  if (!trimmed || trimmed === "ubuntu") return null;
+  if (!/^[a-zA-Z_][a-zA-Z0-9_-]*$/.test(trimmed)) return null;
+  return trimmed;
+}
+
+export function buildInstallCommand(
+  mode: InstallMode,
+  ref: string | null,
+  username?: string | null,
+): string {
+  const safeRef = normalizeGitRef(ref);
+  const safeUsername = normalizeInstallUsername(username);
+  const installRef = safeRef ?? DEFAULT_INSTALL_REF;
+  const userEnv = safeUsername ? `TARGET_USER="${safeUsername}" ` : "";
+  const refEnv = safeRef ? `ACFS_REF="${safeRef}" ` : "";
+  const installerUrl = `${INSTALL_SCRIPT_BASE_URL}/${installRef}/install.sh`;
+
+  return `curl -fsSL "${installerUrl}?$(date +%s)" | ${userEnv}${refEnv}bash -s -- --yes --mode ${mode}`;
+}
+
 /**
  * Build all personalized commands from user inputs.
  */
@@ -48,6 +87,8 @@ export function buildCommands(inputs: CommandBuilderInputs): GeneratedCommand[] 
   const keyPath = sshKeyPath(os);
   const keyPathWin = sshKeyPathWindows();
   const safeRef = normalizeGitRef(ref);
+  const rootTarget = formatSshTarget("root", ip);
+  const userTarget = formatSshTarget(username, ip);
 
   const commands: GeneratedCommand[] = [];
 
@@ -56,21 +97,16 @@ export function buildCommands(inputs: CommandBuilderInputs): GeneratedCommand[] 
     id: "ssh-root",
     label: "SSH as root",
     description: "First-time connection with your VPS password",
-    command: `ssh root@${ip}`,
+    command: `ssh ${rootTarget}`,
     runLocation: "local",
   });
 
   // 2. Installer
-  const refEnv = safeRef ? `ACFS_REF="${safeRef}" ` : "";
-  const installRef = safeRef ?? "main";
-  const cacheBust = "$(date +%s)";
-  const installerUrl = `${INSTALL_SCRIPT_BASE_URL}/${installRef}/install.sh`;
-  const installerBase = `curl -fsSL "${installerUrl}?${cacheBust}" | ${refEnv}bash -s -- --yes --mode ${mode}`;
   commands.push({
     id: "installer",
     label: "Run installer",
     description: `Install ACFS in ${mode} mode${safeRef ? ` pinned to ${safeRef}` : ""}`,
-    command: installerBase,
+    command: buildInstallCommand(mode, ref, username),
     runLocation: "vps",
   });
 
@@ -79,8 +115,8 @@ export function buildCommands(inputs: CommandBuilderInputs): GeneratedCommand[] 
     id: "ssh-user",
     label: `SSH as ${username}`,
     description: "Key-based login after installer completes",
-    command: `ssh -i ${keyPath} ${username}@${ip}`,
-    windowsCommand: `ssh -i ${keyPathWin} ${username}@${ip}`,
+    command: `ssh -i ${keyPath} ${userTarget}`,
+    windowsCommand: `ssh -i ${keyPathWin} ${userTarget}`,
     runLocation: "local",
   });
 
@@ -110,7 +146,7 @@ export function buildCommands(inputs: CommandBuilderInputs): GeneratedCommand[] 
  */
 export function buildShareURL(inputs: CommandBuilderInputs): string {
   if (typeof window === "undefined") return "";
-  const url = new URL(`${window.location.origin}${window.location.pathname}`);
+  const url = new URL(window.location.href);
   url.searchParams.set("ip", inputs.ip);
   url.searchParams.set("os", inputs.os);
   if (inputs.username !== "ubuntu") {

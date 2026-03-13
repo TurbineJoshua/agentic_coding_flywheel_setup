@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Check, Copy, Terminal } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, copyTextToClipboard } from "@/lib/utils";
 import type { CommandRef } from "@/lib/commands";
 
 interface CommandRefCardProps {
@@ -15,25 +15,30 @@ interface CommandRefCardProps {
 
 export function CommandRefCard({ command, categoryLabel }: CommandRefCardProps) {
   const [copied, setCopied] = useState(false);
+  const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyResetTimerRef.current) {
+        clearTimeout(copyResetTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(command.name);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      const textarea = document.createElement("textarea");
-      textarea.value = command.name;
-      textarea.style.position = "fixed";
-      textarea.style.opacity = "0";
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textarea);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+    const copiedOk = await copyTextToClipboard(command.example);
+    if (!copiedOk) {
+      return;
     }
-  }, [command.name]);
+    setCopied(true);
+    if (copyResetTimerRef.current) {
+      clearTimeout(copyResetTimerRef.current);
+    }
+    copyResetTimerRef.current = setTimeout(() => {
+      setCopied(false);
+      copyResetTimerRef.current = null;
+    }, 2000);
+  }, [command.example]);
 
   return (
     <Card

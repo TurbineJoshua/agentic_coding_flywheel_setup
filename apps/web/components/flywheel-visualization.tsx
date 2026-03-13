@@ -46,13 +46,16 @@ import {
 } from "lucide-react";
 import { flywheelTools, flywheelDescription, getAllConnections, type FlywheelTool } from "@/lib/flywheel";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, copyTextToClipboard } from "@/lib/utils";
 
 // =============================================================================
 // ICON MAP - Extended for all tools
 // =============================================================================
 
-const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+export const flywheelIconMap: Record<
+  string,
+  React.ComponentType<{ className?: string }>
+> = {
   LayoutGrid,
   ShieldCheck,
   Mail,
@@ -346,7 +349,7 @@ function DesktopToolNode({
   isPrimary,
   index,
 }: DesktopToolNodeProps) {
-  const Icon = iconMap[tool.icon] || Zap;
+  const Icon = flywheelIconMap[tool.icon] || Zap;
   const iconSize = isPrimary ? "h-6 w-6" : "h-5 w-5";
   const fontSize = isPrimary ? "text-[11px]" : "text-[9px]";
   const color = getColorFromGradient(tool.color);
@@ -527,32 +530,34 @@ interface ToolDetailPanelProps {
 }
 
 function ToolDetailPanel({ tool, onClose }: ToolDetailPanelProps) {
-  const Icon = iconMap[tool.icon] || Zap;
+  const Icon = flywheelIconMap[tool.icon] || Zap;
   const [copied, setCopied] = useState(false);
+  const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const uniqueTools = useMemo(() => getUniqueTools(), []);
   const color = getColorFromGradient(tool.color);
 
+  useEffect(() => {
+    return () => {
+      if (copyResetTimerRef.current) {
+        clearTimeout(copyResetTimerRef.current);
+      }
+    };
+  }, []);
+
   const copyInstallCommand = async () => {
     if (!tool.installCommand) return;
-    try {
-      await navigator.clipboard.writeText(tool.installCommand);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      const textArea = document.createElement("textarea");
-      textArea.value = tool.installCommand;
-      textArea.style.cssText = "position:fixed;opacity:0";
-      document.body.appendChild(textArea);
-      textArea.select();
-      try {
-        document.execCommand("copy");
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } catch {
-        // execCommand is deprecated; failure is acceptable as this is a fallback
-      }
-      document.body.removeChild(textArea);
+    const copiedOk = await copyTextToClipboard(tool.installCommand);
+    if (!copiedOk) {
+      return;
     }
+    setCopied(true);
+    if (copyResetTimerRef.current) {
+      clearTimeout(copyResetTimerRef.current);
+    }
+    copyResetTimerRef.current = setTimeout(() => {
+      setCopied(false);
+      copyResetTimerRef.current = null;
+    }, 2000);
   };
 
   return (
@@ -706,7 +711,7 @@ function ToolDetailPanel({ tool, onClose }: ToolDetailPanelProps) {
               {tool.connectsTo.slice(0, 4).map((targetId, i) => {
                 const targetTool = uniqueTools.find((t) => t.id === targetId);
                 if (!targetTool) return null;
-                const TargetIcon = iconMap[targetTool.icon] || Zap;
+                const TargetIcon = flywheelIconMap[targetTool.icon] || Zap;
                 const targetColor = getColorFromGradient(targetTool.color);
 
                 return (
@@ -784,7 +789,7 @@ interface MobileToolCardProps {
 }
 
 function MobileToolCard({ tool, isActive, onSelect }: MobileToolCardProps) {
-  const Icon = iconMap[tool.icon] || Zap;
+  const Icon = flywheelIconMap[tool.icon] || Zap;
   const color = getColorFromGradient(tool.color);
 
   return (
@@ -889,6 +894,7 @@ function MobileBottomSheet({ tool, onClose }: MobileBottomSheetProps) {
   const [copied, setCopied] = useState(false);
   const uniqueTools = useMemo(() => getUniqueTools(), []);
   const sheetRef = useRef<HTMLDivElement>(null);
+  const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragY, setDragY] = useState(0);
   const startY = useRef(0);
@@ -919,6 +925,14 @@ function MobileBottomSheet({ tool, onClose }: MobileBottomSheetProps) {
     return;
   }, [tool, onClose]);
 
+  useEffect(() => {
+    return () => {
+      if (copyResetTimerRef.current) {
+        clearTimeout(copyResetTimerRef.current);
+      }
+    };
+  }, []);
+
   // Touch gesture handling for swipe-to-dismiss
   const handleTouchStart = (e: React.TouchEvent) => {
     startY.current = e.touches[0].clientY;
@@ -943,30 +957,23 @@ function MobileBottomSheet({ tool, onClose }: MobileBottomSheetProps) {
 
   const copyInstallCommand = async () => {
     if (!tool?.installCommand) return;
-    try {
-      await navigator.clipboard.writeText(tool.installCommand);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      const textArea = document.createElement("textarea");
-      textArea.value = tool.installCommand;
-      textArea.style.cssText = "position:fixed;opacity:0";
-      document.body.appendChild(textArea);
-      textArea.select();
-      try {
-        document.execCommand("copy");
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } catch {
-        // execCommand is deprecated; failure is acceptable as this is a fallback
-      }
-      document.body.removeChild(textArea);
+    const copiedOk = await copyTextToClipboard(tool.installCommand);
+    if (!copiedOk) {
+      return;
     }
+    setCopied(true);
+    if (copyResetTimerRef.current) {
+      clearTimeout(copyResetTimerRef.current);
+    }
+    copyResetTimerRef.current = setTimeout(() => {
+      setCopied(false);
+      copyResetTimerRef.current = null;
+    }, 2000);
   };
 
   if (!tool) return null;
 
-  const Icon = iconMap[tool.icon] || Zap;
+  const Icon = flywheelIconMap[tool.icon] || Zap;
   const color = getColorFromGradient(tool.color);
 
   return (
@@ -1132,7 +1139,7 @@ function MobileBottomSheet({ tool, onClose }: MobileBottomSheetProps) {
                   {tool.connectsTo.slice(0, 5).map((targetId) => {
                     const targetTool = uniqueTools.find((t) => t.id === targetId);
                     if (!targetTool) return null;
-                    const TargetIcon = iconMap[targetTool.icon] || Zap;
+                    const TargetIcon = flywheelIconMap[targetTool.icon] || Zap;
                     const targetColor = getColorFromGradient(targetTool.color);
 
                     return (
@@ -1649,7 +1656,11 @@ export default function FlywheelVisualization() {
       </div>
 
       {/* Mobile bottom sheet */}
-      <MobileBottomSheet tool={selectedTool} onClose={handleCloseDetail} />
+      <MobileBottomSheet
+        key={selectedTool?.id ?? "empty"}
+        tool={selectedTool}
+        onClose={handleCloseDetail}
+      />
 
       {/* CSS animations */}
       <style jsx global>{`

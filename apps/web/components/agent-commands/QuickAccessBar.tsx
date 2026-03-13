@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Terminal } from "lucide-react";
 import { motion, AnimatePresence, springs } from "@/components/motion";
-import { cn } from "@/lib/utils";
+import { cn, copyTextToClipboard } from "@/lib/utils";
 import type { AgentType } from "./AgentHeroCard";
 
 interface QuickCommand {
@@ -22,32 +22,38 @@ const quickCommands: QuickCommand[] = [
 
 export function QuickAccessBar() {
   const [copiedAlias, setCopiedAlias] = useState<string | null>(null);
+  const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyResetTimerRef.current) {
+        clearTimeout(copyResetTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleCopy = async (command: QuickCommand, e: React.MouseEvent) => {
     e.stopPropagation();
 
-    try {
-      await navigator.clipboard.writeText(command.alias);
-      setCopiedAlias(command.alias);
-
-      // Trigger haptic feedback on mobile if available
-      if (navigator.vibrate) {
-        navigator.vibrate(10);
-      }
-
-      setTimeout(() => setCopiedAlias(null), 2000);
-    } catch {
-      const textarea = document.createElement("textarea");
-      textarea.value = command.alias;
-      textarea.style.position = "fixed";
-      textarea.style.opacity = "0";
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textarea);
-      setCopiedAlias(command.alias);
-      setTimeout(() => setCopiedAlias(null), 2000);
+    const copiedOk = await copyTextToClipboard(command.alias);
+    if (!copiedOk) {
+      return;
     }
+
+    setCopiedAlias(command.alias);
+
+    // Trigger haptic feedback on mobile if available
+    if (navigator.vibrate) {
+      navigator.vibrate(10);
+    }
+
+    if (copyResetTimerRef.current) {
+      clearTimeout(copyResetTimerRef.current);
+    }
+    copyResetTimerRef.current = setTimeout(() => {
+      setCopiedAlias(null);
+      copyResetTimerRef.current = null;
+    }, 2000);
   };
 
   return (

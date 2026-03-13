@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Copy, Check, ChevronDown, Terminal } from "lucide-react";
 import { motion, AnimatePresence, springs } from "@/components/motion";
-import { cn } from "@/lib/utils";
+import { cn, copyTextToClipboard } from "@/lib/utils";
 import { useReducedMotion } from "@/lib/hooks/useReducedMotion";
 
 export type AgentType = "claude" | "codex" | "gemini";
@@ -77,6 +77,7 @@ export function AgentHeroCard({
   const [copiedAlias, setCopiedAlias] = useState<string | null>(null);
   const [isHovered, setIsHovered] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const personality = agentPersonalities[agent.id];
   const prefersReducedMotion = useReducedMotion();
 
@@ -105,24 +106,28 @@ export function AgentHeroCard({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [index, isExpanded, onToggle, onKeyboardFocus]);
 
+  useEffect(() => {
+    return () => {
+      if (copyResetTimerRef.current) {
+        clearTimeout(copyResetTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleCopy = async (text: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedAlias(text);
-      setTimeout(() => setCopiedAlias(null), 2000);
-    } catch {
-      const textarea = document.createElement("textarea");
-      textarea.value = text;
-      textarea.style.position = "fixed";
-      textarea.style.opacity = "0";
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textarea);
-      setCopiedAlias(text);
-      setTimeout(() => setCopiedAlias(null), 2000);
+    const copiedOk = await copyTextToClipboard(text);
+    if (!copiedOk) {
+      return;
     }
+    setCopiedAlias(text);
+    if (copyResetTimerRef.current) {
+      clearTimeout(copyResetTimerRef.current);
+    }
+    copyResetTimerRef.current = setTimeout(() => {
+      setCopiedAlias(null);
+      copyResetTimerRef.current = null;
+    }, 2000);
   };
 
   return (
