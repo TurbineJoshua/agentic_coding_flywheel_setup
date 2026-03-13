@@ -508,15 +508,17 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Track API error:', error);
     if (error instanceof PayloadTooLargeError) {
       return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
     }
     if (error instanceof SyntaxError) {
-      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid JSON format' }, { status: 400 });
     }
-
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Analytics tracking error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
 

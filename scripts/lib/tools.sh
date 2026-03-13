@@ -277,7 +277,9 @@ handle_tool_failure() {
 #   Newline-separated list of skipped tool names
 #
 get_skipped_tools() {
-    printf '%s\n' "${SKIPPED_TOOLS[@]}"
+    if [[ ${#SKIPPED_TOOLS[@]} -gt 0 ]]; then
+        printf '%s\n' "${SKIPPED_TOOLS[@]}"
+    fi
 }
 
 # count_skipped_tools - Get count of skipped tools

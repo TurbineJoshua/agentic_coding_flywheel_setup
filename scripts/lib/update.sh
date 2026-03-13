@@ -849,6 +849,7 @@ update_run_verified_installer_with_env() {
         echo "Missing checksum entry for $tool" >&2
         return 1
     fi
+
     if [[ -n "$bash_env_assignment" ]] && [[ ! "$bash_env_assignment" =~ ^[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]+$ ]]; then
         echo "Invalid inline env assignment for $tool installer: $bash_env_assignment" >&2
         return 1
@@ -1013,9 +1014,6 @@ update_acfs_self() {
     # Get current branch
     local current_branch=""
     current_branch=$(git -C "$ACFS_REPO_ROOT" branch --show-current 2>/dev/null) || true
-    if [[ -z "$current_branch" ]]; then
-        current_branch=$(git -C "$ACFS_REPO_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null) || true
-    fi
     if [[ -z "$current_branch" ]] || [[ "$current_branch" == "HEAD" ]]; then
         log_item "warn" "ACFS self-update" "failed to get current branch"
         return 0
@@ -1976,7 +1974,8 @@ update_stack() {
                 chmod +x "$tmp_install"
                 log_item "run" "MCP Agent Mail"
 
-                if bash "$tmp_install" --yes --migrate; then
+                # Use --no-start and exact dir just like the manifest
+                if bash "$tmp_install" --dir "${TARGET_HOME:-/home/ubuntu}/mcp_agent_mail" --yes --no-start; then
                     local uid
                     local runtime_dir
                     local user_bus
