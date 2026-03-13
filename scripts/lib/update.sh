@@ -1996,7 +1996,7 @@ update_stack() {
                         log_item "fail" "MCP Agent Mail" "am CLI missing after install"
                         ((FAIL_COUNT += 1))
                     else
-                        db_url="sqlite://${storage_root}/storage.sqlite3"
+                        db_url="sqlite:///${storage_root}/storage.sqlite3"
 
                         local -a service_env=("HOME=$HOME")
                         if [[ -d "$runtime_dir" ]]; then
@@ -2086,13 +2086,7 @@ UNIT_EOF
                                         STORAGE_ROOT="$storage_root" \
                                         DATABASE_URL="$db_url" \
                                         HTTP_ALLOW_LOCALHOST_UNAUTHENTICATED=true \
-                                        "$am_bin" migrate >/dev/null 2>&1 || true
-                                    nohup env \
-                                        RUST_LOG=info \
-                                        STORAGE_ROOT="$storage_root" \
-                                        DATABASE_URL="$db_url" \
-                                        HTTP_ALLOW_LOCALHOST_UNAUTHENTICATED=true \
-                                        "$am_bin" serve-http --host 127.0.0.1 --port 8765 --path /mcp/ \
+                                        bash -c "$am_bin migrate && $am_bin serve-http --host 127.0.0.1 --port 8765 --path /mcp/" \
                                         >>"$fallback_log_file" 2>&1 < /dev/null &
                                     echo $! > "$fallback_pid_file"
                                 fi
@@ -2102,13 +2096,7 @@ UNIT_EOF
                                     STORAGE_ROOT="$storage_root" \
                                     DATABASE_URL="$db_url" \
                                     HTTP_ALLOW_LOCALHOST_UNAUTHENTICATED=true \
-                                    "$am_bin" migrate >/dev/null 2>&1 || true
-                                nohup env \
-                                    RUST_LOG=info \
-                                    STORAGE_ROOT="$storage_root" \
-                                    DATABASE_URL="$db_url" \
-                                    HTTP_ALLOW_LOCALHOST_UNAUTHENTICATED=true \
-                                    "$am_bin" serve-http --host 127.0.0.1 --port 8765 --path /mcp/ \
+                                    bash -c "$am_bin migrate && $am_bin serve-http --host 127.0.0.1 --port 8765 --path /mcp/" \
                                     >>"$fallback_log_file" 2>&1 < /dev/null &
                                 echo $! > "$fallback_pid_file"
                             fi
@@ -2380,7 +2368,7 @@ update_p10k() {
     output=$(timeout 60 git -C "$p10k_dir" pull --ff-only 2>&1) || exit_code=$?
 
     if [[ $exit_code -eq 0 ]]; then
-        if capture_version_after "p10k"; then
+        if ! echo "$output" | grep -q "Already up to date"; then
             log_item "ok" "Powerlevel10k updated" "${VERSION_BEFORE[p10k]} → ${VERSION_AFTER[p10k]}"
         else
             log_item "ok" "Powerlevel10k" "already up to date"

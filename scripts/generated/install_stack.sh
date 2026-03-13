@@ -254,7 +254,7 @@ storage_root="$HOME/.mcp_agent_mail_git_mailbox_repo"
 unit_dir="$HOME/.config/systemd/user"
 unit_file="$unit_dir/agent-mail.service"
 am_bin="$(command -v am)"
-db_url="sqlite://${storage_root}/storage.sqlite3"
+db_url="sqlite:///${storage_root}/storage.sqlite3"
 
 mkdir -p "$storage_root" "$unit_dir"
 cat > "$unit_file" <<UNIT_EOF
