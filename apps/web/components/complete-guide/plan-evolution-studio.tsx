@@ -1,11 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence, useInView, useReducedMotion } from "framer-motion";
-import { 
-  GitBranch, GitMerge, FileText, CheckCircle2, Circle, 
-  ArrowRight, ShieldCheck, Zap, XOctagon 
-} from "lucide-react";
+import React, { useRef, useState, useCallback } from "react";
+import { motion, useInView, useReducedMotion } from "framer-motion";
+import { CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const EXHIBIT_PANEL_CLASS =
@@ -27,30 +24,15 @@ const PLAN_DIMENSIONS = [
   { id: "execution", label: "Execution readiness" },
 ] as const satisfies ReadonlyArray<{ id: PlanDimensionId; label: string }>;
 
-const PLAN_MODEL_DATA: ReadonlyArray<{
-  id: PlanModelId;
-  label: string;
-  color: string;
-  role: string;
-  strengths: readonly [string, string];
-  blindSpot: string;
-  contributions: Record<PlanDimensionId, number>;
-}> = [
+const PLAN_MODEL_DATA = [
   {
     id: "gpt",
     label: "GPT Pro",
-    color: "#22d3ee",
+    color: "#FF5500",
     role: "Global arbiter",
     strengths: ["System-wide coherence", "Best-of-all-worlds synthesis"],
-    blindSpot:
-      "Without GPT Pro, global arbitration weakens and the hybrid plan becomes less coherent.",
-    contributions: {
-      architecture: 92,
-      workflow: 83,
-      edgeCases: 66,
-      novelty: 72,
-      execution: 68,
-    },
+    blindSpot: "Can over-smooth contradictions instead of solving them.",
+    contributions: { execution: 60, workflow: 70, architecture: 90, edgeCases: 65, novelty: 65 },
   },
   {
     id: "claude",
@@ -58,49 +40,28 @@ const PLAN_MODEL_DATA: ReadonlyArray<{
     color: "#a78bfa",
     role: "Implementation realist",
     strengths: ["Execution detail", "Sharp structural edits"],
-    blindSpot:
-      "Without Claude, the plan sounds more complete than it really is for implementation.",
-    contributions: {
-      architecture: 78,
-      workflow: 84,
-      edgeCases: 74,
-      novelty: 64,
-      execution: 88,
-    },
+    blindSpot: "Sometimes deletes context it considers 'obvious'.",
+    contributions: { execution: 95, workflow: 75, architecture: 80, edgeCases: 70, novelty: 60 },
   },
   {
     id: "gemini",
     label: "Gemini",
-    color: "#34d399",
+    color: "#FFBD2E",
     role: "Coverage expander",
     strengths: ["Alternative framings", "Missed edge cases"],
-    blindSpot:
-      "Without Gemini, more weird-but-important edge cases survive into later phases.",
-    contributions: {
-      architecture: 72,
-      workflow: 76,
-      edgeCases: 90,
-      novelty: 82,
-      execution: 61,
-    },
+    blindSpot: "Can drift off-topic if intent isn't rigorously anchored.",
+    contributions: { execution: 70, workflow: 95, architecture: 65, edgeCases: 80, novelty: 75 },
   },
   {
     id: "grok",
     label: "Grok Heavy",
-    color: "#f59e0b",
+    color: "#FFFFFF",
     role: "Assumption stress-test",
     strengths: ["Counterintuitive options", "Pressure-testing assumptions"],
-    blindSpot:
-      "Without Grok, the plan loses some of the challenging alternatives that expose hidden assumptions.",
-    contributions: {
-      architecture: 63,
-      workflow: 69,
-      edgeCases: 77,
-      novelty: 93,
-      execution: 58,
-    },
+    blindSpot: "Prone to suggesting overly clever, non-standard solutions.",
+    contributions: { execution: 65, workflow: 80, architecture: 75, edgeCases: 95, novelty: 90 },
   },
-];
+] as const;
 
 const PLAN_REFINEMENT_LABELS = [
   "Raw merge",
@@ -161,8 +122,8 @@ export function PlanEvolutionStudio() {
 
       <div className="relative z-10 flex flex-col gap-6 border-b border-white/[0.04] bg-white/[0.01] p-6 sm:p-8 backdrop-blur-md lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <div className="text-[0.65rem] font-bold uppercase tracking-widest text-cyan-400/80 flex items-center gap-2 mb-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+          <div className="text-[0.65rem] font-bold uppercase tracking-widest text-[#FF5500]/80 flex items-center gap-2 mb-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#FF5500] animate-pulse shadow-[0_0_8px_rgba(255,85,0,0.8)]" />
             Interactive Studio
           </div>
           <h4 className="text-xl font-black tracking-tight text-white sm:text-2xl">
@@ -190,9 +151,9 @@ export function PlanEvolutionStudio() {
               value={refinementRound}
               onChange={(event) => setRefinementRound(Number(event.target.value))}
               aria-label="Refinement round"
-              className="h-2 w-full cursor-ew-resize appearance-none rounded-full bg-white/10 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[#0A0D14] [&::-webkit-slider-thumb]:bg-cyan-400 [&::-webkit-slider-thumb]:shadow-[0_0_15px_rgba(34,211,238,0.6)] hover:[&::-webkit-slider-thumb]:scale-110 [&::-webkit-slider-thumb]:transition-transform relative z-10"
+              className="h-2 w-full cursor-ew-resize appearance-none rounded-full bg-white/10 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[#0A0D14] [&::-webkit-slider-thumb]:bg-[#FF5500] [&::-webkit-slider-thumb]:shadow-[0_0_15px_rgba(255,85,0,0.6)] hover:[&::-webkit-slider-thumb]:scale-110 [&::-webkit-slider-thumb]:transition-transform relative z-10"
               style={{
-                background: `linear-gradient(to right, rgba(34,211,238,0.5) ${(refinementRound / 4) * 100}%, rgba(255,255,255,0.05) ${(refinementRound / 4) * 100}%)`
+                background: `linear-gradient(to right, rgba(255,85,0,0.5) ${(refinementRound / 4) * 100}%, rgba(255,255,255,0.05) ${(refinementRound / 4) * 100}%)`
               }}
             />
           </div>
@@ -284,11 +245,11 @@ export function PlanEvolutionStudio() {
                   {totalScore}%
                 </div>
               </div>
-              <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-5 py-3 text-right shadow-inner">
-                <div className="text-[0.65rem] font-bold uppercase tracking-widest text-cyan-400/70">
+              <div className="rounded-xl border border-[#FF5500]/20 bg-[#FF5500]/10 px-5 py-3 text-right shadow-inner">
+                <div className="text-[0.65rem] font-bold uppercase tracking-widest text-[#FF5500]/70">
                   Active Inputs
                 </div>
-                <div className="mt-1 text-2xl font-black text-cyan-400">
+                <div className="mt-1 text-2xl font-black text-[#FF5500]">
                   {selectedModels.length}
                 </div>
               </div>
@@ -346,9 +307,9 @@ export function PlanEvolutionStudio() {
                   ))}
                 </div>
 
-                <div className="mt-6 rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-sm leading-relaxed text-cyan-400 font-medium">
+                <div className="mt-6 rounded-xl border border-[#FF5500]/20 bg-[#FF5500]/10 px-4 py-3 text-sm leading-relaxed text-[#FF5500] font-medium">
                   Round {refinementRound + 1}:{" "}
-                  <span className="font-light text-cyan-400/80">
+                  <span className="font-light text-[#FF5500]/80">
                     {refinementRound < 2
                       ? "The plan is still absorbing strengths and closing obvious gaps."
                       : refinementRound < 4
@@ -373,7 +334,7 @@ export function PlanEvolutionStudio() {
                   </div>
                   <div className="h-2 rounded-full bg-[#020408] border border-white/[0.04] shadow-inner overflow-hidden">
                     <motion.div
-                      className="h-full bg-gradient-to-r from-cyan-400 via-violet-400 to-emerald-400 shadow-[0_0_10px_rgba(34,211,238,0.5)]"
+                      className="h-full bg-gradient-to-r from-[#FF5500] via-zinc-400 to-[#FFBD2E] shadow-[0_0_10px_rgba(255,85,0,0.5)]"
                       initial={reducedMotion ? { width: `${dimension.value}%` } : { width: 0 }}
                       animate={{ width: `${dimension.value}%` }}
                       transition={{ duration: 0.75, type: "spring", bounce: 0 }}

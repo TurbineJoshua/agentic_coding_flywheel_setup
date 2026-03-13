@@ -2,85 +2,85 @@
 
 import { useRef, useState } from "react";
 import { AnimatePresence, motion, useInView, useReducedMotion } from "framer-motion";
-import { ArrowRight, Boxes, CheckCircle2, FileText, ShieldAlert, AlertOctagon, AlertTriangle, Zap } from "lucide-react";
+import { Boxes, CheckCircle2, FileText, AlertOctagon, AlertTriangle, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const EXHIBIT_PANEL_CLASS =
   "my-12 overflow-hidden rounded-3xl border border-white/[0.06] bg-[#05070a] shadow-2xl relative group/viz";
 
 type TranslationMode = "thin" | "rich";
-type ConceptId = "upload" | "search" | "admin" | "tests";
-type TranslationBeadId = "br-101" | "br-102" | "br-103";
-
-type PlanConcept = {
-  id: ConceptId;
-  label: string;
-  color: string;
-  insight: string;
-  planLine: string;
-  mapsTo: readonly TranslationBeadId[];
-};
-
-type BeadDetail = {
-  label: string;
-  value: string;
-  concepts: readonly ConceptId[];
-};
+type ConceptId = "upload" | "index" | "dash" | "auth" | "e2e" | "search" | "admin" | "tests";
+type TranslationBeadId = "br-101" | "br-102" | "br-103" | "br-104" | "br-105";
 
 type TranslationBead = {
   id: TranslationBeadId;
   title: string;
-  color: string;
-  dependsOn: readonly TranslationBeadId[];
-  coverage: readonly ConceptId[];
+  dependsOn: TranslationBeadId[];
   thinSummary: string;
   thinRisk: string;
-  richDetails: readonly BeadDetail[];
+  richDetails: {
+    label: string;
+    value: string;
+    concepts: ConceptId[];
+  }[];
+  color: string;
+  coverage: ConceptId[];
 };
 
-const PLAN_TO_BEAD_CONCEPTS: readonly PlanConcept[] = [
+const PLAN_TO_BEAD_CONCEPTS: {
+  id: ConceptId;
+  label: string;
+  planLine: string;
+  insight: string;
+  mapsTo: TranslationBeadId[];
+  color: string;
+}[] = [
   {
     id: "upload",
-    label: "Upload workflow",
-    color: "#22d3ee",
-    insight: "Chunking, parser retries, telemetry, and failure surfacing all need to survive the translation.",
-    planLine:
-      "Users can upload large PDFs, recover from parser failures, and see when ingestion stalls.",
-    mapsTo: ["br-101", "br-103"],
+    label: "File Upload Core",
+    planLine: "- Implement multipart file upload for PDFs and markdown.",
+    insight: "Seems simple, but implies S3 bucket provisioning, chunking, and progress states.",
+    mapsTo: ["br-101", "br-102"],
+    color: "#FF5500",
   },
   {
-    id: "search",
-    label: "Search behavior",
-    color: "#a78bfa",
-    insight: "Ranking rules, typo tolerance, empty states, and query explanations cannot be left implicit.",
-    planLine:
-      "Search needs ranking, typo tolerance, filters, and clear explanations for why a result matched.",
+    id: "index",
+    label: "Search Indexing",
+    planLine: "- Documents must be embedded and stored in the vector database.",
+    insight: "Cannot happen synchronously. Requires a background queue and an embeddings provider.",
     mapsTo: ["br-102"],
+    color: "#a78bfa",
   },
   {
-    id: "admin",
-    label: "Operator controls",
-    color: "#34d399",
-    insight: "Admins need recovery affordances, auditability, and visibility into degraded ingestion paths.",
-    planLine:
-      "Operators need to inspect stuck jobs, requeue safely, and understand blast radius before touching data.",
-    mapsTo: ["br-102", "br-103"],
+    id: "dash",
+    label: "Failure Dashboard",
+    planLine: "- Admins need a way to see files that failed processing.",
+    insight: "Depends entirely on the error states defined during indexing.",
+    mapsTo: ["br-103"],
+    color: "#FFBD2E",
   },
   {
-    id: "tests",
-    label: "Verification",
-    color: "#f59e0b",
-    insight: "Happy path, edge cases, and failure fixtures have to be part of the bead, not an afterthought.",
-    planLine:
-      "Every workflow ships with unit tests, end-to-end coverage, and detailed logs for postmortems.",
-    mapsTo: ["br-101", "br-102", "br-103"],
+    id: "auth",
+    label: "Authentication",
+    planLine: "- System is internal only. Use SSO.",
+    insight: "The most fundamental dependency. Nothing else can be tested until this works.",
+    mapsTo: ["br-104"],
+    color: "#71717A",
+  },
+  {
+    id: "e2e",
+    label: "E2E Testing",
+    planLine: "- Critical paths must have Playwright coverage.",
+    insight: "Must be modeled as its own bead that depends on the UI being stable.",
+    mapsTo: ["br-105"],
+    color: "#FFFFFF",
   },
 ] as const;
 
 const TRANSLATED_BEADS: readonly TranslationBead[] = [
   {
     id: "br-101",
-    title: "Upload and Parse Pipeline",
+    title: "Document Upload API",
     color: "#22d3ee",
     dependsOn: [],
     coverage: ["upload", "tests"],
@@ -388,7 +388,7 @@ export function PlanToBeadsViz() {
 
                       <div className="flex flex-wrap gap-2">
                         {bead.dependsOn.length > 0 ? (
-                          bead.dependsOn.map((dependency) => (
+                          bead.dependsOn.map((dependency: TranslationBeadId) => (
                             <span
                               key={dependency}
                               className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[0.65rem] font-bold uppercase tracking-widest text-white/50"
@@ -397,7 +397,7 @@ export function PlanToBeadsViz() {
                             </span>
                           ))
                         ) : (
-                          <span className="rounded-full border border-[#27C93F]/20 bg-[#27C93F]/10 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-widest text-[#27C93F]">
+                          <span className="rounded-full border border-[#FFBD2E]/20 bg-[#FFBD2E]/10 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-widest text-[#FFBD2E]">
                             root bead
                           </span>
                         )}
@@ -428,7 +428,7 @@ export function PlanToBeadsViz() {
                           <div className="rounded-lg border border-white/[0.05] bg-white/[0.02] px-4 py-3 text-sm text-zinc-400 font-light">
                             {bead.thinSummary}
                           </div>
-                          <div className="rounded-lg border border-[#FF5F56]/20 bg-[#FF5F56]/10 px-4 py-3 text-sm leading-relaxed text-[#FF5F56] font-medium flex items-start gap-3">
+                          <div className="rounded-lg border border-[#FF5500]/20 bg-[#FF5500]/10 px-4 py-3 text-sm leading-relaxed text-[#FF5500] font-medium flex items-start gap-3">
                             <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
                             {bead.thinRisk}
                           </div>
@@ -441,7 +441,7 @@ export function PlanToBeadsViz() {
                           exit={{ opacity: 0, y: -8 }}
                           className="mt-5 space-y-3"
                         >
-                          {bead.richDetails.map((detail) => {
+                          {bead.richDetails.map((detail: { label: string; value: string; concepts: ConceptId[] }) => {
                             const detailHighlighted = detail.concepts.includes(selectedConceptId);
                             return (
                               <div
@@ -492,7 +492,7 @@ export function PlanToBeadsViz() {
           <div className="text-[0.65rem] font-bold uppercase tracking-widest text-white/40 group-hover:text-white/60 transition-colors">
             Execution Readiness
           </div>
-          <div className={cn("mt-3 text-4xl font-black tracking-tighter transition-colors duration-500", mode === "rich" ? "text-[#27C93F]" : "text-[#FFBD2E]")}>
+          <div className={cn("mt-3 text-4xl font-black tracking-tighter transition-colors duration-500", mode === "rich" ? "text-[#FFBD2E]" : "text-[#FF5500]")}>
             {readinessScore}%
           </div>
           <p className="mt-2 text-sm leading-relaxed text-zinc-400 font-light">
@@ -504,7 +504,7 @@ export function PlanToBeadsViz() {
           <div className="text-[0.65rem] font-bold uppercase tracking-widest text-white/40 group-hover:text-white/60 transition-colors">
             Unanswered Questions
           </div>
-          <div className={cn("mt-3 text-4xl font-black tracking-tighter transition-colors duration-500", mode === "rich" ? "text-white" : "text-[#FF5F56]")}>
+          <div className={cn("mt-3 text-4xl font-black tracking-tighter transition-colors duration-500", mode === "rich" ? "text-white" : "text-[#FF5500]")}>
             {ambiguityCount}
           </div>
           <p className="mt-2 text-sm leading-relaxed text-zinc-400 font-light">
@@ -514,16 +514,16 @@ export function PlanToBeadsViz() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-[#27C93F]/20 bg-[#27C93F]/5 p-5 shadow-lg relative overflow-hidden group">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(39,201,63,0.1),transparent_50%)] pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          <div className="relative z-10 flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-widest text-[#27C93F]">
+        <div className="rounded-2xl border border-[#FFBD2E]/20 bg-[#FFBD2E]/5 p-5 shadow-lg relative overflow-hidden group">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,189,46,0.1),transparent_50%)] pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          <div className="relative z-10 flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-widest text-[#FFBD2E]">
             <CheckCircle2 className="h-3.5 w-3.5" />
             The Takeaway
           </div>
           <p className="relative z-10 mt-3 text-sm leading-relaxed text-zinc-300 font-medium">
             {MODE_COPY[mode].takeaway}
           </p>
-          <div className="relative z-10 mt-4 inline-flex items-center gap-2 rounded-xl border border-[#27C93F]/30 bg-[#27C93F]/10 px-3 py-2 text-[0.65rem] font-bold uppercase tracking-widest text-[#27C93F]">
+          <div className="relative z-10 mt-4 inline-flex items-center gap-2 rounded-xl border border-[#FFBD2E]/30 bg-[#FFBD2E]/10 px-3 py-2 text-[0.65rem] font-bold uppercase tracking-widest text-[#FFBD2E]">
             <Zap className="h-3.5 w-3.5" />
             Impacts {selectedConcept.mapsTo.length} bead{selectedConcept.mapsTo.length > 1 ? "s" : ""}
           </div>

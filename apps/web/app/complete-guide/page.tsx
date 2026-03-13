@@ -134,7 +134,7 @@ function Hero() {
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute top-0 left-1/4 -translate-x-1/2 w-[140%] h-[600px] bg-[radial-gradient(ellipse_at_top,rgba(var(--primary-rgb),0.18),transparent_70%)] opacity-60" />
         <div className="absolute top-1/4 right-0 w-[1000px] h-[800px] bg-[radial-gradient(ellipse_at_center,rgba(var(--violet-rgb),0.08),transparent_60%)]" />
-        <div className="absolute -bottom-48 left-1/3 w-[1200px] h-[600px] bg-[radial-gradient(ellipse_at_bottom,rgba(var(--emerald-rgb),0.05),transparent_60%)]" />
+        <div className="absolute -bottom-48 left-1/3 w-[1200px] h-[600px] bg-[radial-gradient(ellipse_at_bottom,rgba(255,85,0,0.02),transparent_60%)]" />
       </div>
 
       <div className="container relative mx-auto px-4 sm:px-6">
@@ -144,21 +144,21 @@ function Hero() {
           transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
           className="mx-auto max-w-[1100px] text-center relative z-10"
         >
-          <div className="inline-flex items-center gap-3 rounded-full border border-white/[0.08] bg-white/[0.03] px-6 py-2.5 text-xs sm:text-sm font-bold text-primary mb-12 shadow-2xl backdrop-blur-2xl relative overflow-hidden group/badge">
+          <div className="inline-flex items-center gap-3 rounded-full border border-white/[0.08] bg-white/[0.03] px-6 py-2.5 text-xs sm:text-sm font-bold text-[#FF5500] mb-12 shadow-2xl backdrop-blur-2xl relative overflow-hidden group/badge">
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover/badge:animate-[shimmer_1.5s_infinite] transition-transform" />
-            <Sparkles className="h-4 w-4 text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+            <Sparkles className="h-4 w-4 text-[#FF5500] drop-shadow-[0_0_8px_rgba(255,85,0,0.8)]" />
             <span className="tracking-[0.1em] uppercase">Complete Methodology Guide</span>
           </div>
 
           <h1 className="heading-display text-6xl sm:text-7xl md:text-8xl lg:text-[10rem] text-white tracking-[-0.05em] drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)] font-black leading-[0.9] perspective-1000">
             The Flywheel{" "}
-            <span className="block mt-6 bg-gradient-to-br from-white via-primary to-violet-400 bg-clip-text text-transparent pb-6 drop-shadow-[0_0_60px_rgba(var(--primary-rgb),0.5)]">
+            <span className="block mt-6 bg-gradient-to-br from-white via-[#FF5500] to-violet-400 bg-clip-text text-transparent pb-6 drop-shadow-[0_0_60px_rgba(var(--primary-rgb),0.5)]">
               Approach
             </span>
           </h1>
 
           <p className="mx-auto mt-12 max-w-3xl text-xl text-zinc-400 sm:text-2xl md:text-3xl leading-relaxed font-extralight tracking-tight opacity-80">
-            A definitive system for operating <Jargon term="ai-agents" className="text-white font-normal underline decoration-primary/30 underline-offset-8">AI agent swarms</Jargon>. 
+            A definitive system for operating <Jargon term="ai-agents" className="text-white font-normal underline decoration-[#FF5500]/30 underline-offset-8">AI agent swarms</Jargon>. 
             Bridge the gap from <Hl>human intent</Hl> to <Hl>flawless execution</Hl>.
           </p>
         </motion.div>
@@ -170,11 +170,11 @@ function Hero() {
           transition={{ delay: 1.5, duration: 1.5 }}
           className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-4 text-white/20"
         >
-          <span className="text-[10px] uppercase tracking-[0.4em] font-black text-primary/40">Discover</span>
+          <span className="text-[10px] uppercase tracking-[0.4em] font-black text-[#FF5500]/40">Discover</span>
           <motion.div 
             animate={{ y: [0, 12, 0], opacity: [0.2, 0.8, 0.2] }} 
             transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-            className="w-[2px] h-16 bg-gradient-to-b from-primary via-violet-500/40 to-transparent rounded-full shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)]"
+            className="w-[2px] h-16 bg-gradient-to-b from-[#FF5500] via-violet-500/40 to-transparent rounded-full shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)]"
           />
         </motion.div>
       </div>
@@ -190,7 +190,7 @@ function Hero() {
 export default function CompleteGuidePage() {
   return (
     <ErrorBoundary>
-      <main className="min-h-screen bg-[#020408] selection:bg-primary/20 selection:text-white overflow-x-hidden">
+      <main className="min-h-screen bg-[#020408] selection:bg-[#FF5500]/20 selection:text-white overflow-x-hidden">
         <Hero />
 
         <div className="mx-auto max-w-[1600px] px-6 lg:px-12 relative">
@@ -198,7 +198,7 @@ export default function CompleteGuidePage() {
           <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
             <div className="absolute top-[5%] left-0 w-full h-[1000px] bg-[radial-gradient(ellipse_at_top_left,rgba(var(--primary-rgb),0.03),transparent_60%)]" />
             <div className="absolute top-[20%] right-0 w-full h-[1000px] bg-[radial-gradient(ellipse_at_bottom_right,rgba(var(--violet-rgb),0.02),transparent_60%)]" />
-            <div className="absolute top-[40%] left-0 w-full h-[1000px] bg-[radial-gradient(ellipse_at_center,rgba(var(--emerald-rgb),0.01),transparent_60%)]" />
+            <div className="absolute top-[40%] left-0 w-full h-[1000px] bg-[radial-gradient(ellipse_at_center,rgba(255,85,0,0.02),transparent_60%)]" />
           </div>
 
           <div className="flex flex-col lg:flex-row gap-20 xl:gap-32 py-24 md:py-32">
@@ -206,7 +206,7 @@ export default function CompleteGuidePage() {
             <aside className="hidden lg:block w-80 shrink-0">
               <div className="sticky top-32 flex flex-col gap-12">
                 <div className="flex flex-col gap-4">
-                  <span className="text-[0.65rem] font-black text-primary uppercase tracking-[0.5em] opacity-40">Section Control</span>
+                  <span className="text-[0.65rem] font-black text-[#FF5500] uppercase tracking-[0.5em] opacity-40">Section Control</span>
                   <TableOfContents items={TOC_ITEMS} />
                 </div>
                 
@@ -216,22 +216,23 @@ export default function CompleteGuidePage() {
                     <a 
                       href="https://github.com/Dicklesworthstone/agentic_coding_flywheel_setup" 
                       target="_blank" 
-                      className="group flex items-center gap-4 text-xs font-bold text-white/40 hover:text-primary transition-colors"
+                      className="group flex items-center gap-4 text-xs font-bold text-white/40 hover:text-[#FF5500] transition-colors"
                     >
-                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/[0.02] border border-white/5 group-hover:border-primary/30 transition-all">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/[0.02] border border-white/5 group-hover:border-[#FF5500]/30 transition-all">
                         <Rocket className="h-3.5 w-3.5" />
                       </div>
                       GitHub Repository
                     </a>
-                    <a 
-                      href="/complete-guide?download=pdf" 
-                      className="group flex items-center gap-4 text-xs font-bold text-white/40 hover:text-primary transition-colors"
+                    <button
+                      type="button"
+                      onClick={() => window.print()}
+                      className="group flex items-center gap-4 text-xs font-bold text-white/40 hover:text-[#FF5500] transition-colors"
                     >
-                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/[0.02] border border-white/5 group-hover:border-primary/30 transition-all">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/[0.02] border border-white/5 group-hover:border-[#FF5500]/30 transition-all">
                         <Download className="h-3.5 w-3.5" />
                       </div>
-                      Export as PDF
-                    </a>
+                      Print / Save as PDF
+                    </button>
                   </div>
                 </div>
               </div>
@@ -287,7 +288,7 @@ export default function CompleteGuidePage() {
           The <Hl>markdown plan</Hl> is where the big thinking happens.
         </>,
         <>
-          The <Jargon term="beads" className="font-semibold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent">beads</Jargon> are how that thinking gets packaged for execution
+          The <Jargon term="beads" className="font-semibold bg-gradient-to-r from-[#FF5500] to-violet-400 bg-clip-text text-transparent">beads</Jargon> are how that thinking gets packaged for execution
           by many agents.
         </>,
         <>
@@ -798,7 +799,7 @@ export default function CompleteGuidePage() {
     <NumberedList
       items={[
         <>
-          Visit the wizard website at <a href="https://agent-flywheel.com" target="_blank" rel="noopener noreferrer" className="font-semibold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent underline decoration-primary/40 underline-offset-2 hover:decoration-primary/70 transition-colors">agent-flywheel.com</a>
+          Visit the wizard website at <a href="https://agent-flywheel.com" target="_blank" rel="noopener noreferrer" className="font-semibold bg-gradient-to-r from-[#FF5500] to-violet-400 bg-clip-text text-transparent underline decoration-[#FF5500]/40 underline-offset-2 hover:decoration-[#FF5500]/70 transition-colors">agent-flywheel.com</a>
         </>,
         <>
           Follow the instructions to rent a <Jargon term="vps">VPS</Jargon>{" "}
@@ -886,7 +887,7 @@ alias gmi='gemini --yolo'`}
           <Jargon term="supabase">Supabase</Jargon>, Rust/WASM for performance-critical parts
         </>,
         <>
-          <Jargon term="cli" className="font-semibold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent">CLI</Jargon> <Hl>tools:</Hl> Golang or Rust
+          <Jargon term="cli" className="font-semibold bg-gradient-to-r from-[#FF5500] to-violet-400 bg-clip-text text-transparent">CLI</Jargon> <Hl>tools:</Hl> Golang or Rust
         </>,
       ]}
     />
@@ -1726,7 +1727,7 @@ ntm palette`} />
                 <SubSection title="Why Naive Agent Communication Fails">
                   <P>Building your own agent coordination from scratch is full of footguns:</P>
                   <P><Hl>Footgun #1: Broadcast-to-all defaults.</Hl> Agents are lazy and will only use broadcast mode, spamming every agent with mostly irrelevant information. Burns precious context window.</P>
-                  <P><Hl>Footgun #2:</Hl> Poor <Jargon term="mcp" className="font-semibold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent">MCP</Jargon> <Hl>ergonomics.</Hl> It takes huge iteration to get the API surface right so agents use it reliably without wasting <Jargon term="token">tokens</Jargon>.</P>
+                  <P><Hl>Footgun #2:</Hl> Poor <Jargon term="mcp" className="font-semibold bg-gradient-to-r from-[#FF5500] to-violet-400 bg-clip-text text-transparent">MCP</Jargon> <Hl>ergonomics.</Hl> It takes huge iteration to get the API surface right so agents use it reliably without wasting <Jargon term="token">tokens</Jargon>.</P>
                   <P><Hl>Footgun #3: Forcing git worktrees.</Hl> Worktrees demolish velocity and create reconciliation debt when agents diverge.</P>
                   <P><Hl>Footgun #4: Rigid identity and locking.</Hl> Rigid locks held by dead agents block everyone else. Agent Mail uses advisory reservations with TTL expiry and reclaim mechanics.</P>
                   <AgentMailViz />
@@ -2322,9 +2323,9 @@ ntm palette`} />
                   <TipBox variant="info">
                     For a broader public skills collection: <a href="https://github.com/Dicklesworthstone/agent_flywheel_clawdbot_skills_and_integrations/tree/main/skills" target="_blank" rel="noopener noreferrer" className="underline">github.com/Dicklesworthstone/agent_flywheel_clawdbot_skills_and_integrations</a>
                   </TipBox>
-                  <P>For a much larger paid library of higher-end skills, see <a href="https://jeffreys-skills.md" target="_blank" rel="noopener noreferrer" className="font-semibold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent underline decoration-primary/40 underline-offset-2 hover:decoration-primary/70 transition-colors">jeffreys-skills.md</a>. It is a $20/month service with many of the strongest curated skills, new skills added continuously, and a dedicated proprietary CLI called <IC>jsm</IC> for managing them. Unlike jeffreysprompts.com, it does not have a free section.</P>
-                  <P>The prompt side has a similar split. <a href="https://jeffreysprompts.com" target="_blank" rel="noopener noreferrer" className="font-semibold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent underline decoration-primary/40 underline-offset-2 hover:decoration-primary/70 transition-colors">jeffreysprompts.com</a> has a generous free section and is open source. It also has a paid Pro tier with additional prompts and a dedicated proprietary CLI called <IC>jfp</IC> for managing prompt collections.</P>
-                  <P>Both paid offerings&mdash;the Pro side of <a href="https://jeffreysprompts.com" target="_blank" rel="noopener noreferrer" className="font-semibold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent underline decoration-primary/40 underline-offset-2 hover:decoration-primary/70 transition-colors">jeffreysprompts.com</a> and <a href="https://jeffreys-skills.md" target="_blank" rel="noopener noreferrer" className="font-semibold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent underline decoration-primary/40 underline-offset-2 hover:decoration-primary/70 transition-colors">jeffreys-skills.md</a>&mdash;are still under active development. That means readers should expect the occasional rough edge or bug. Active work is underway to fix issues quickly, feedback is genuinely appreciated, and refunds are available if someone tries them and is unhappy.</P>
+                  <P>For a much larger paid library of higher-end skills, see <a href="https://jeffreys-skills.md" target="_blank" rel="noopener noreferrer" className="font-semibold bg-gradient-to-r from-[#FF5500] to-violet-400 bg-clip-text text-transparent underline decoration-[#FF5500]/40 underline-offset-2 hover:decoration-[#FF5500]/70 transition-colors">jeffreys-skills.md</a>. It is a $20/month service with many of the strongest curated skills, new skills added continuously, and a dedicated proprietary CLI called <IC>jsm</IC> for managing them. Unlike jeffreysprompts.com, it does not have a free section.</P>
+                  <P>The prompt side has a similar split. <a href="https://jeffreysprompts.com" target="_blank" rel="noopener noreferrer" className="font-semibold bg-gradient-to-r from-[#FF5500] to-violet-400 bg-clip-text text-transparent underline decoration-[#FF5500]/40 underline-offset-2 hover:decoration-[#FF5500]/70 transition-colors">jeffreysprompts.com</a> has a generous free section and is open source. It also has a paid Pro tier with additional prompts and a dedicated proprietary CLI called <IC>jfp</IC> for managing prompt collections.</P>
+                  <P>Both paid offerings&mdash;the Pro side of <a href="https://jeffreysprompts.com" target="_blank" rel="noopener noreferrer" className="font-semibold bg-gradient-to-r from-[#FF5500] to-violet-400 bg-clip-text text-transparent underline decoration-[#FF5500]/40 underline-offset-2 hover:decoration-[#FF5500]/70 transition-colors">jeffreysprompts.com</a> and <a href="https://jeffreys-skills.md" target="_blank" rel="noopener noreferrer" className="font-semibold bg-gradient-to-r from-[#FF5500] to-violet-400 bg-clip-text text-transparent underline decoration-[#FF5500]/40 underline-offset-2 hover:decoration-[#FF5500]/70 transition-colors">jeffreys-skills.md</a>&mdash;are still under active development. That means readers should expect the occasional rough edge or bug. Active work is underway to fix issues quickly, feedback is genuinely appreciated, and refunds are available if someone tries them and is unhappy.</P>
                   <P highlight>Skills provide the prompts, procedures, anti-pattern guidance, and tool-specific workflows directly to agents, which reduces the amount of bespoke prompting a human needs to do by hand.</P>
                 </SubSection>
 
@@ -2929,7 +2930,7 @@ even better for you in the future!`} />
 
                 <SubSection title="Getting Started">
                   <P>
-                    The complete system is free and 100% <Jargon term="open-source">open-source</Jargon>: <a href="https://agent-flywheel.com/" target="_blank" rel="noopener noreferrer" className="font-semibold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent underline decoration-primary/40 underline-offset-2 hover:decoration-primary/70 transition-colors">agent-flywheel.com</a>
+                    The complete system is free and 100% <Jargon term="open-source">open-source</Jargon>: <a href="https://agent-flywheel.com/" target="_blank" rel="noopener noreferrer" className="font-semibold bg-gradient-to-r from-[#FF5500] to-violet-400 bg-clip-text text-transparent underline decoration-[#FF5500]/40 underline-offset-2 hover:decoration-[#FF5500]/70 transition-colors">agent-flywheel.com</a>
                   </P>
                   <BlockQuote>
                     &ldquo;You don&rsquo;t even need to know much at all about computers; you just need the desire to
@@ -2969,9 +2970,9 @@ even better for you in the future!`} />
                   from prompts that worked well in real sessions.
                 </P>
                 <P>
-                  For a larger public prompt collection, see <a href="https://jeffreysprompts.com" target="_blank" rel="noopener noreferrer" className="font-semibold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent underline decoration-primary/40 underline-offset-2 hover:decoration-primary/70 transition-colors">jeffreysprompts.com</a> (generous free section,
+                  For a larger public prompt collection, see <a href="https://jeffreysprompts.com" target="_blank" rel="noopener noreferrer" className="font-semibold bg-gradient-to-r from-[#FF5500] to-violet-400 bg-clip-text text-transparent underline decoration-[#FF5500]/40 underline-offset-2 hover:decoration-[#FF5500]/70 transition-colors">jeffreysprompts.com</a> (generous free section,
                   open source). Also has a paid Pro tier with a CLI called <ToolPill>jfp</ToolPill>. For skills:
-                  <a href="https://jeffreys-skills.md" target="_blank" rel="noopener noreferrer" className="font-semibold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent underline decoration-primary/40 underline-offset-2 hover:decoration-primary/70 transition-colors"> jeffreys-skills.md</a> ($20/month) with curated skills and a CLI called <ToolPill>jsm</ToolPill>.
+                  <a href="https://jeffreys-skills.md" target="_blank" rel="noopener noreferrer" className="font-semibold bg-gradient-to-r from-[#FF5500] to-violet-400 bg-clip-text text-transparent underline decoration-[#FF5500]/40 underline-offset-2 hover:decoration-[#FF5500]/70 transition-colors"> jeffreys-skills.md</a> ($20/month) with curated skills and a CLI called <ToolPill>jsm</ToolPill>.
                   Both paid offerings are under active development.
                 </P>
 
@@ -3190,26 +3191,6 @@ even better for you in the future!`} />
               <FooterCTA />
             </div>
 
-            {/* Sticky TOC - handles both desktop sidebar and mobile drawer internally */}
-            <aside className="w-0 lg:w-72 shrink-0 relative z-50">
-              <div 
-                className="hidden lg:block sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto pl-8 pb-12 border-l border-white/[0.05] scrollbar-hide"
-                style={{ 
-                  maskImage: 'linear-gradient(to bottom, black 80%, transparent 100%)',
-                  WebkitMaskImage: 'linear-gradient(to bottom, black 80%, transparent 100%)' 
-                }}
-              >
-                <p className="text-[10px] font-semibold text-primary/70 uppercase tracking-[0.2em] mb-8 px-3">
-                  Navigation
-                </p>
-                <TableOfContents items={TOC_ITEMS} />
-              </div>
-              
-              {/* Render mobile TOC directly so it's not trapped inside the hidden div */}
-              <div className="lg:hidden block">
-                <TableOfContents items={TOC_ITEMS} />
-              </div>
-            </aside>
           </div>
         </div>
       </main>
@@ -3250,14 +3231,14 @@ function FooterCTA() {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-[radial-gradient(ellipse_at_top,rgba(var(--primary-rgb),0.1),transparent_70%)]" />
 
       <div className="relative mx-auto text-center px-6 z-10">
-        <div className="inline-flex items-center gap-3 rounded-full border border-white/[0.05] bg-white/[0.02] px-6 py-2 text-[0.7rem] font-black uppercase tracking-[0.3em] text-primary mb-12 shadow-inner">
+        <div className="inline-flex items-center gap-3 rounded-full border border-white/[0.05] bg-white/[0.02] px-6 py-2 text-[0.7rem] font-black uppercase tracking-[0.3em] text-[#FF5500] mb-12 shadow-inner">
           <Rocket className="h-4 w-4" />
           Ready to Start?
         </div>
         
         <h2 className="text-4xl sm:text-5xl md:text-7xl font-black text-white tracking-[-0.05em] drop-shadow-2xl">
           Get the Flywheel{" "}
-          <span className="bg-gradient-to-br from-white to-primary bg-clip-text text-transparent">Stack</span>
+          <span className="bg-gradient-to-br from-white to-[#FF5500] bg-clip-text text-transparent">Stack</span>
         </h2>
         
         <p className="mx-auto mt-12 max-w-2xl text-lg sm:text-xl text-zinc-400 leading-relaxed font-extralight opacity-80">
@@ -3267,15 +3248,15 @@ function FooterCTA() {
         
         <div className="mt-16 flex flex-col items-center gap-8">
           <div className="group relative w-full max-w-4xl">
-            <div className="absolute -inset-4 bg-primary/5 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
-            <div className="relative overflow-x-auto rounded-3xl bg-[#03050a] border border-white/[0.05] transition-all duration-700 group-hover:border-primary/30 shadow-2xl">
+            <div className="absolute -inset-4 bg-[#FF5500]/5 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+            <div className="relative overflow-x-auto rounded-3xl bg-[#03050a] border border-white/[0.05] transition-all duration-700 group-hover:border-[#FF5500]/30 shadow-2xl">
               <div className="flex items-center justify-between gap-8 px-8 py-6 sm:px-10 sm:py-8">
-                <code className="flex-1 whitespace-nowrap font-mono text-sm sm:text-lg text-primary/80 tracking-tight text-left">
+                <code className="flex-1 whitespace-nowrap font-mono text-sm sm:text-lg text-[#FF5500]/80 tracking-tight text-left">
                   {INSTALL_COMMAND}
                 </code>
                 <button
                   onClick={handleCopy}
-                  className="flex-shrink-0 flex items-center gap-3 rounded-2xl bg-white/[0.03] border border-white/5 px-6 py-3 text-xs font-black uppercase tracking-widest text-white/40 transition-all duration-500 hover:bg-primary hover:text-black hover:border-primary hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.5)] active:scale-95"
+                  className="flex-shrink-0 flex items-center gap-3 rounded-2xl bg-white/[0.03] border border-white/5 px-6 py-3 text-xs font-black uppercase tracking-widest text-white/40 transition-all duration-500 hover:bg-[#FF5500] hover:text-black hover:border-[#FF5500] hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.5)] active:scale-95"
                 >
                   {copied ? (
                     <>
@@ -3297,7 +3278,7 @@ function FooterCTA() {
             Or use the{" "}
             <a
               href="/wizard/os-selection"
-              className="text-primary hover:text-white transition-colors underline decoration-primary/30 underline-offset-8"
+              className="text-[#FF5500] hover:text-white transition-colors underline decoration-[#FF5500]/30 underline-offset-8"
             >
               Step-by-step wizard
             </a>{" "}

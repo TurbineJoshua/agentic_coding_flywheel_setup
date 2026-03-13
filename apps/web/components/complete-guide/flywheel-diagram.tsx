@@ -13,61 +13,11 @@ export function FlywheelDiagram() {
   const [autoTour, setAutoTour] = useState(true);
 
   const stages = [
-    {
-      id: "human-intent",
-      label: "Human Intent",
-      short: "Goals + workflows",
-      x: 320,
-      y: 68,
-      color: "#22d3ee",
-      input: "Raw desire and taste",
-      output: "Explicit constraints and workflows",
-      effect: "Human judgment compresses ambiguity before any downstream artifact starts drifting.",
-    },
-    {
-      id: "markdown-plan",
-      label: "Markdown Plan",
-      short: "Whole-system reasoning",
-      x: 518,
-      y: 154,
-      color: "#a78bfa",
-      input: "Clarified goals",
-      output: "A design that still fits in context",
-      effect: "Architecture gets settled while global reasoning is still cheap and actually possible.",
-    },
-    {
-      id: "building-beads",
-      label: "Bead Graph",
-      short: "Executable memory",
-      x: 452,
-      y: 336,
-      color: "#f472b6",
-      input: "Approved plan decisions",
-      output: "Self-contained work packets",
-      effect: "Context leaves prose and enters the execution graph where fresh agents can actually use it.",
-    },
-    {
-      id: "swarm-execution",
-      label: "Swarm Execution",
-      short: "Parallel implementation",
-      x: 188,
-      y: 336,
-      color: "#34d399",
-      input: "Prioritized ready beads",
-      output: "Code, tests, reviews, commits",
-      effect: "Fungible agents stay busy on the frontier instead of improvising their own architecture.",
-    },
-    {
-      id: "memory-and-knowledge",
-      label: "Memory & QA",
-      short: "CASS, UBS, lessons",
-      x: 122,
-      y: 154,
-      color: "#fbbf24",
-      input: "Session history and defects",
-      output: "Better prompts and sharper defaults",
-      effect: "The next loop starts with stronger artifacts than the previous loop had on day zero.",
-    },
+    { id: "human", label: "Intent", x: 140, y: 110, color: "#FFFFFF", input: "Fuzzy goals", output: "Mental model", effect: "Defines the 'Why'" },
+    { id: "plan", label: "Planning", x: 420, y: 60, color: "#FF5500", input: "Mental model", output: "Markdown plan", effect: "Solves global architecture" },
+    { id: "beads", label: "Translation", x: 580, y: 210, color: "#FFBD2E", input: "Markdown plan", output: "Bead graph", effect: "Creates execution substrate" },
+    { id: "swarm", label: "Execution", x: 420, y: 360, color: "#A1A1AA", input: "Beads + AGENTS.md", output: "Code changes", effect: "Mechanizes implementation" },
+    { id: "review", label: "Harden", x: 140, y: 310, color: "#71717A", input: "Code changes", output: "Verified system", effect: "Produces truth & memory" }
   ] as const;
 
   const cycleOptions = [1, 3, 6] as const;
@@ -246,7 +196,7 @@ export function FlywheelDiagram() {
                   cx="320"
                   cy={210 - (160 + i * 20)}
                   r={3}
-                  fill="url(#orbitGradient)"
+                  fill="#FF5500"
                   fillOpacity="0.5"
                   filter="url(#nodeGlow)"
                 />
@@ -254,7 +204,7 @@ export function FlywheelDiagram() {
             ))}
 
             <g>
-              <circle cx="320" cy="210" r="85" fill="#020408" stroke="url(#orbitGradient)" strokeOpacity="0.15" strokeWidth="2" />
+              <circle cx="320" cy="210" r="85" fill="#020408" stroke="#FF5500" strokeOpacity="0.15" strokeWidth="2" />
               <text x="320" y="190" textAnchor="middle" className="fill-white/30 text-[10px] font-bold uppercase tracking-[0.4em]">
                 System Output
               </text>
@@ -365,18 +315,18 @@ export function FlywheelDiagram() {
 
           <div className="mt-auto pt-10 border-t border-white/[0.04] space-y-6">
             <div className="text-[0.65rem] font-bold uppercase tracking-widest text-white/40">
-              System Metrics <span className="text-primary ml-1 font-mono bg-primary/10 px-1.5 py-0.5 rounded">L{cycleOptions[cycleDepth]}</span>
+              System Metrics <span className="text-[#FF5500] ml-1 font-mono bg-[#FF5500]/10 px-1.5 py-0.5 rounded">L{cycleOptions[cycleDepth]}</span>
             </div>
             <div className="space-y-5">
               {metrics.map((metric) => (
                 <div key={metric.label} className="group/metric">
                   <div className="mb-2.5 flex items-center justify-between">
                     <span className="text-xs font-bold text-zinc-400 group-hover/metric:text-white transition-colors uppercase tracking-widest">{metric.label}</span>
-                    <span className="font-mono text-primary text-sm font-black drop-shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]">{metric.value}%</span>
+                    <span className="font-mono text-[#FF5500] text-sm font-black drop-shadow-[0_0_8px_rgba(255,85,0,0.5)]">{metric.value}%</span>
                   </div>
                   <div className="h-[3px] w-full bg-[#020408] border border-white/[0.05] rounded-full overflow-hidden shadow-inner">
                     <motion.div
-                      className="h-full bg-gradient-to-r from-primary to-violet-400 shadow-[0_0_10px_rgba(var(--primary-rgb),0.8)]"
+                      className="h-full bg-gradient-to-r from-[#FF5500] to-[#FFBD2E] shadow-[0_0_10px_rgba(255,85,0,0.8)]"
                       initial={{ width: 0 }}
                       animate={{ width: `${metric.value}%` }}
                       transition={{ duration: 1, type: "spring", bounce: 0 }}

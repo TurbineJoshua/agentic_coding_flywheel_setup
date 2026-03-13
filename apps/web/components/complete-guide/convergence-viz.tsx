@@ -21,9 +21,17 @@ function getConvergenceVerdict(s: number) {
 }
 
 const CONVERGENCE_SIGNALS = [
-  { id: "size", label: "Output Size Shrinking", weight: 0.35, weightLabel: "35%", color: "#38bdf8" },
-  { id: "velocity", label: "Change Velocity Slowing", weight: 0.35, weightLabel: "35%", color: "#a78bfa" },
-  { id: "similarity", label: "Content Similarity Rising", weight: 0.30, weightLabel: "30%", color: "#34d399" },
+  { id: "dependencies", label: "Dependencies Stabilizing", weight: 0.25, weightLabel: "25%", color: "#A1A1AA" },
+  { id: "similarity", label: "Content Similarity Rising", weight: 0.30, weightLabel: "30%", color: "#FFBD2E" },
+  { id: "length", label: "Length Delta Approaching Zero", weight: 0.20, weightLabel: "20%", color: "#FF5500" },
+  { id: "semantics", label: "Semantic Density Plateau", weight: 0.25, weightLabel: "25%", color: "#FFFFFF" },
+] as const;
+
+const CONVERGENCE_PRESETS = [
+  { label: "Draft", vals: [0.1, 0.1, 0.15, 0.12] },
+  { label: "Mid", vals: [0.5, 0.45, 0.5, 0.52] },
+  { label: "Ready", vals: [0.8, 0.75, 0.85, 0.78] },
+  { label: "Ship", vals: [0.95, 0.95, 0.98, 0.96] },
 ] as const;
 
 export function ConvergenceViz() {
@@ -33,7 +41,7 @@ export function ConvergenceViz() {
   const reducedMotion = prefersReducedMotion ?? false;
   
   // 0.0 to 1.0
-  const [values, setValues] = useState([0.3, 0.2, 0.4]);
+  const [values, setValues] = useState([0.3, 0.2, 0.4, 0.3]);
   const [particles] = useState(() =>
     Array.from({ length: 40 }, (_, i) => ({
       id: i,
@@ -41,10 +49,14 @@ export function ConvergenceViz() {
       distance: ((i * 7 + 3) % 40) / 40,
       speed: 0.2 + ((i * 13 + 5) % 40) / 50,
       size: 2 + ((i * 11 + 7) % 30) / 10,
+      signalIdx: i % CONVERGENCE_SIGNALS.length,
     })),
   );
 
-  const score = values[0] * 0.35 + values[1] * 0.35 + values[2] * 0.30;
+  const score = CONVERGENCE_SIGNALS.reduce(
+    (total, signal, idx) => total + values[idx] * signal.weight,
+    0,
+  );
   const phase = getConvergencePhase(score);
   const verdict = getConvergenceVerdict(score);
 
@@ -69,11 +81,11 @@ export function ConvergenceViz() {
       <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 sm:p-8 border-b border-white/[0.04] bg-white/[0.01] backdrop-blur-md">
         <div>
           <div className="text-[0.65rem] font-bold text-white/30 uppercase tracking-widest mb-2 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#FFBD2E] animate-pulse shadow-[0_0_8px_rgba(255,189,46,0.8)]" />
             Interactive Simulator
           </div>
           <div className="flex items-center gap-3">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-inner">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#FFBD2E]/10 text-[#FFBD2E] border border-[#FFBD2E]/20 shadow-inner">
               <Radar className="h-4 w-4" />
             </span>
             <h4 className="text-xl sm:text-2xl font-black text-white tracking-tight">Convergence Detection</h4>
@@ -86,12 +98,7 @@ export function ConvergenceViz() {
         {/* PRESETS */}
         <div className="mt-6 sm:mt-0 flex flex-wrap gap-2 p-1.5 bg-black/40 rounded-2xl border border-white/[0.05] shadow-inner">
           <span className="text-[0.6rem] text-white/30 self-center mx-2 uppercase tracking-widest font-bold">Presets</span>
-          {([
-            { label: "Draft", vals: [0.1, 0.1, 0.15] },
-            { label: "Mid", vals: [0.5, 0.45, 0.5] },
-            { label: "Ready", vals: [0.8, 0.75, 0.85] },
-            { label: "Ship", vals: [0.95, 0.95, 0.98] },
-          ] as const).map((preset) => (
+          {CONVERGENCE_PRESETS.map((preset) => (
             <button
               key={preset.label}
               onClick={() => setValues([...preset.vals])}
@@ -150,7 +157,7 @@ export function ConvergenceViz() {
             {/* Background glowing orb representing the target state */}
             <motion.div 
               className="absolute w-20 h-20 rounded-full blur-[30px] pointer-events-none mix-blend-screen"
-              style={{ backgroundColor: score > 0.8 ? "#34d399" : score > 0.5 ? "#a78bfa" : "#38bdf8" }}
+              style={{ backgroundColor: score > 0.8 ? "#FFBD2E" : score > 0.5 ? "#FF5500" : "#A1A1AA" }}
               animate={{ 
                 scale: 1 + score * 1.5,
                 opacity: score * 0.4 + 0.1
@@ -167,15 +174,14 @@ export function ConvergenceViz() {
                 animate={{ rotate: 360 }}
                 transition={{ duration: rotationSpeed, ease: "linear", repeat: Infinity }}
               >
-                {particles.map(p => {
-                  // Calculate position based on current convergence radius + inherent variance
+                {particles.map((p) => {
+                  const signalScore = values[p.signalIdx];
+                  const color = score > 0.8 ? "#FFBD2E" : score > 0.5 ? "#FF5500" : "#A1A1AA";
                   const currentRad = (p.distance * convergenceRadius) + (convergenceRadius * 0.2);
                   const x = center + Math.cos(p.angle) * currentRad;
                   const y = center + Math.sin(p.angle) * currentRad;
+                  const particleOpacity = 0.35 + signalScore * 0.65;
                   
-                  // Color changes based on how tight the convergence is
-                  const color = score > 0.8 ? "#34d399" : score > 0.5 ? "#a78bfa" : "#38bdf8";
-
                   return (
                     <motion.div
                       key={p.id}
@@ -187,12 +193,14 @@ export function ConvergenceViz() {
                         height: p.size,
                         backgroundColor: color,
                         boxShadow: `0 0 ${p.size * 2}px ${color}`,
+                        opacity: particleOpacity,
                       }}
                       animate={{
                         left: `calc(50% + ${x - center}px)`,
                         top: `calc(50% + ${y - center}px)`,
                         backgroundColor: color,
                         boxShadow: `0 0 ${p.size * 2}px ${color}`,
+                        opacity: particleOpacity,
                       }}
                       transition={{ type: "spring", stiffness: 150, damping: 20, mass: 0.8 }}
                     />
@@ -205,7 +213,7 @@ export function ConvergenceViz() {
             {(reducedMotion || !isInView) && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div 
-                  className="rounded-full border-2 border-emerald-500/30 flex items-center justify-center"
+                  className="rounded-full border-2 border-[#FFBD2E]/30 flex items-center justify-center"
                   style={{ width: convergenceRadius * 2, height: convergenceRadius * 2, transition: 'all 0.5s ease-out' }}
                 />
               </div>
@@ -218,7 +226,7 @@ export function ConvergenceViz() {
               <span className="text-[0.65rem] uppercase tracking-widest text-white/40 font-bold">Overall Convergence</span>
               <span className={cn(
                 "text-lg font-black tracking-tight",
-                score > 0.8 ? "text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.5)]" : score > 0.5 ? "text-violet-400 drop-shadow-[0_0_10px_rgba(167,139,250,0.5)]" : "text-sky-400 drop-shadow-[0_0_10px_rgba(56,189,248,0.5)]"
+                score > 0.8 ? "text-[#FFBD2E] drop-shadow-[0_0_10px_rgba(255,189,46,0.5)]" : score > 0.5 ? "text-[#FF5500] drop-shadow-[0_0_10px_rgba(255,85,0,0.5)]" : "text-zinc-400 drop-shadow-[0_0_10px_rgba(161,161,170,0.5)]"
               )}>
                 {(score * 100).toFixed(1)}%
               </span>
@@ -226,7 +234,7 @@ export function ConvergenceViz() {
 
             <div className="h-2 w-full bg-black/40 rounded-full overflow-hidden border border-white/[0.05] shadow-inner">
               <motion.div
-                className="h-full bg-gradient-to-r from-sky-400 via-violet-400 to-emerald-400"
+                className="h-full bg-gradient-to-r from-zinc-500 via-[#FF5500] to-[#FFBD2E]"
                 animate={{ width: `${score * 100}%` }}
                 transition={{ duration: 0.5, type: "spring", bounce: 0 }}
               />
@@ -235,7 +243,7 @@ export function ConvergenceViz() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2">
               <span className={cn(
                 "text-sm font-bold tracking-tight",
-                score > 0.8 ? "text-emerald-400" : score > 0.5 ? "text-violet-400" : "text-sky-400"
+                score > 0.8 ? "text-[#FFBD2E]" : score > 0.5 ? "text-[#FF5500]" : "text-zinc-400"
               )}>{phase}</span>
               <span className="text-xs text-white/50 font-light">{verdict}</span>
             </div>

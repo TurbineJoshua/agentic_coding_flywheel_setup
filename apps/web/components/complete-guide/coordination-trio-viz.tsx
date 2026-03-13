@@ -24,7 +24,7 @@ const TRIO_TOOLS = [
     id: "mail",
     label: "Agent Mail",
     sub: "",
-    color: "#22d3ee",
+    color: "#FF5500",
     x: 140,
     y: 300,
     desc: "Mail threads and file reservations let many agents coordinate without smashing into each other.",
@@ -35,7 +35,7 @@ const TRIO_TOOLS = [
     id: "bv",
     label: "bv",
     sub: "",
-    color: "#34d399",
+    color: "#FFBD2E",
     x: 460,
     y: 300,
     desc: "Graph analysis turns the bead graph into a prioritization compass instead of a flat backlog.",
@@ -209,9 +209,9 @@ export function CoordinationTrioViz() {
             <span className="text-[0.6rem] font-black text-white/20 uppercase tracking-[0.4em]">Capability Map</span>
             <div className="mt-8 flex flex-col gap-6">
               {[
-                { l: "Beads", t: "The canonical memory of pending work.", c: "text-violet-400" },
-                { l: "Agent Mail", t: "The high-bandwidth negotiation layer.", c: "text-cyan-400" },
-                { l: "bv", t: "The graph-theory compass for triage.", c: "text-emerald-400" },
+                { l: "Agent Mail", t: "The high-bandwidth negotiation layer.", c: "text-[#FF5500]" },
+                { l: "br", t: "The durable, localized issue state.", c: "text-violet-400" },
+                { l: "bv", t: "The graph-theory compass for triage.", c: "text-[#FFBD2E]" }
               ].map((item, i) => (
                 <div key={i} className="flex flex-col gap-1">
                   <span className={`text-[0.7rem] font-bold tracking-wide ${item.c} opacity-80`}>{item.l}</span>

@@ -72,7 +72,7 @@ const AGENTS = [
 const SCENARIOS: Record<ScenarioId, ScenarioDefinition> = {
   herd: {
     title: "Thundering Herd",
-    accent: "#ef4444",
+    accent: "#FF5500",
     badge: "Collision-prone",
     summary: "All agents wake together, re-read context together, and pile onto the same frontier.",
     frames: [
@@ -165,7 +165,7 @@ const SCENARIOS: Record<ScenarioId, ScenarioDefinition> = {
   },
   staggered: {
     title: "Staggered Start",
-    accent: "#34d399",
+    accent: "#FFBD2E",
     badge: "Frontier-friendly",
     summary: "Agents enter a few beats apart, so each arrival sees a different clean frontier.",
     frames: [
@@ -261,15 +261,15 @@ const SCENARIOS: Record<ScenarioId, ScenarioDefinition> = {
 function getAgentToneClasses(tone: AgentTone) {
   switch (tone) {
     case "boot":
-      return "border-cyan-500/22 bg-cyan-500/10 text-cyan-100";
+      return "border-[#A1A1AA]/22 bg-[#A1A1AA]/10 text-[#A1A1AA]";
     case "claiming":
-      return "border-violet-500/22 bg-violet-500/10 text-violet-100";
+      return "border-[#FFBD2E]/22 bg-[#FFBD2E]/10 text-[#FFBD2E]";
     case "blocked":
-      return "border-red-500/24 bg-red-500/10 text-red-100";
+      return "border-[#FF5500]/24 bg-[#FF5500]/10 text-[#FF5500]";
     case "working":
-      return "border-emerald-500/24 bg-emerald-500/10 text-emerald-100";
+      return "border-zinc-500/24 bg-zinc-500/10 text-zinc-300";
     case "done":
-      return "border-emerald-500/30 bg-emerald-500/14 text-emerald-50";
+      return "border-zinc-400/30 bg-zinc-400/14 text-zinc-200";
     default:
       return "border-white/10 bg-white/[0.04] text-white/60";
   }
@@ -278,11 +278,11 @@ function getAgentToneClasses(tone: AgentTone) {
 function getBeadToneClasses(tone: BeadTone) {
   switch (tone) {
     case "claimed":
-      return "border-cyan-500/22 bg-cyan-500/10";
+      return "border-[#FFBD2E]/22 bg-[#FFBD2E]/10";
     case "contested":
-      return "border-red-500/28 bg-red-500/10";
+      return "border-[#FF5500]/28 bg-[#FF5500]/10";
     case "done":
-      return "border-emerald-500/28 bg-emerald-500/10";
+      return "border-zinc-500/28 bg-zinc-500/10";
     default:
       return "border-white/10 bg-white/[0.03]";
   }
@@ -398,9 +398,9 @@ function ScenarioPanel({
             <div className="flex items-center justify-between gap-3">
               <span className="font-mono text-xs text-white/72">{bead.id}</span>
               {bead.tone === "contested" ? (
-                <AlertTriangle className="h-4 w-4 text-red-300" />
+                <AlertTriangle className="h-4 w-4 text-[#FF5500]" />
               ) : bead.tone === "done" ? (
-                <CheckCircle2 className="h-4 w-4 text-emerald-300" />
+                <CheckCircle2 className="h-4 w-4 text-zinc-400" />
               ) : (
                 <div className="h-2 w-2 rounded-full bg-white/35" />
               )}
@@ -471,7 +471,7 @@ export function SwarmExecutionViz() {
     <div ref={ref} className={EXHIBIT_PANEL_CLASS}>
       <div className="flex flex-col gap-4 border-b border-white/10 pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <div className="flex items-center gap-2 text-[0.65rem] font-semibold uppercase tracking-[0.28em] text-emerald-300/70">
+          <div className="flex items-center gap-2 text-[0.65rem] font-semibold uppercase tracking-[0.28em] text-[#FFBD2E]/70">
             <Users className="h-3.5 w-3.5" />
             Interactive Exhibit
           </div>
@@ -572,9 +572,9 @@ export function SwarmExecutionViz() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
-          className="mt-6 rounded-[28px] border border-cyan-500/16 bg-cyan-500/6 p-5"
+          className="mt-6 rounded-[28px] border border-white/10 bg-white/[0.02] p-5 shadow-inner"
         >
-          <div className="text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-cyan-300/70">
+          <div className="text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-[#FFBD2E]">
             Comparative takeaway
           </div>
           <p className="mt-3 text-sm leading-relaxed text-white/76">

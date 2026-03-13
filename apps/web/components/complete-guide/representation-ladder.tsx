@@ -12,7 +12,7 @@ const LADDER_LAYERS = [
   {
     id: "plan",
     label: "Plan Space",
-    color: "#22d3ee",
+    color: "#FFFFFF",
     width: 95,
     cost: "1x",
     desc: "Fix the prose, rethink the architecture, and keep the blast radius confined to reasoning.",
@@ -20,7 +20,7 @@ const LADDER_LAYERS = [
   {
     id: "bead",
     label: "Bead Space",
-    color: "#a78bfa",
+    color: "#FFBD2E",
     width: 70,
     cost: "5x",
     desc: "Revise boundaries, dependencies, and acceptance criteria across executable work packets.",
@@ -28,7 +28,7 @@ const LADDER_LAYERS = [
   {
     id: "code",
     label: "Code Space",
-    color: "#f97316",
+    color: "#FF5500",
     width: 45,
     cost: "25x",
     desc: "Rewrite implementation, fix tests, debug regressions, and pay the price of already-made commitments.",
@@ -49,9 +49,9 @@ export function RepresentationLadder() {
     <div ref={ref} className={EXHIBIT_PANEL_CLASS}>
       <div className="flex flex-col gap-10 border-b border-white/[0.03] pb-12 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-2xl">
-          <div className="text-[0.65rem] font-black uppercase tracking-[0.4em] text-cyan-400 opacity-60 flex items-center gap-3">
-            <div className="w-8 h-px bg-cyan-400/30" />
-            Failure Economics
+          <div className="text-[0.65rem] font-black uppercase tracking-[0.4em] text-[#FF5500] opacity-60 flex items-center gap-3">
+            <div className="w-8 h-px bg-[#FF5500]/30" />
+            Cost Architecture
           </div>
           <h4 className="mt-6 text-3xl font-black tracking-[-0.04em] text-white sm:text-4xl lg:text-5xl leading-[1.1]">
             Where you catch the bug determines the rework bill
@@ -87,7 +87,7 @@ export function RepresentationLadder() {
             return (
               <motion.div
                 key={layer.id}
-                initial={reducedMotion ? false : { opacity: 0, x: -40 }}
+                initial={reducedMotion ? false : { opacity: 0, x: -20 }}
                 animate={isInView ? { opacity: 1, x: 0 } : undefined}
                 transition={{
                   type: "spring",
@@ -98,41 +98,40 @@ export function RepresentationLadder() {
                 className="group/layer flex items-center gap-6"
               >
                 <div className="flex-1">
-                  <div 
+                  <div
                     className="relative rounded-3xl border transition-all duration-700 overflow-hidden"
                     style={{
                       width: `${layer.width}%`,
                       height: '90px',
-                      borderColor: isBugSource 
-                        ? '#ef4444' 
-                        : isCascade 
-                          ? '#f59e0b' 
+                      borderColor: isBugSource
+                        ? '#FF5500'
+                        : isCascade
+                          ? '#FFBD2E'
                           : 'rgba(255,255,255,0.03)',
-                      background: isBugSource 
-                        ? 'rgba(239, 68, 68, 0.05)' 
-                        : isCascade 
-                          ? 'rgba(245, 158, 11, 0.05)' 
-                          : 'rgba(255,255,255,0.01)'
+                      background: isBugSource
+                        ? 'rgba(255, 85, 0, 0.05)'
+                        : isCascade
+                          ? 'rgba(255, 189, 46, 0.05)'
+                          : 'rgba(255,255,255,0.01)',
                     }}
                   >
-                    <div className="absolute inset-0 bg-grid-pattern opacity-[0.02]" />
+                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.02] mix-blend-overlay pointer-events-none" />
                     
-                    <div className="relative h-full flex items-center justify-between px-8">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-3">
-                          <span className={`text-[0.65rem] font-black uppercase tracking-[0.2em] ${isBugSource ? 'text-red-400' : isCascade ? 'text-amber-400' : 'text-white/20'}`}>
+                    <div className="absolute inset-0 flex items-center justify-between px-8">
+                      <div>
+                        <div className="flex items-center gap-3 mb-1">
+                          <span className={`text-[0.6rem] font-black uppercase tracking-[0.2em] transition-colors ${isBugSource ? 'text-[#FF5500]' : isCascade ? 'text-[#FFBD2E]' : 'text-white/30'}`}>
                             {layer.id} layer
                           </span>
-                          {isBugSource && <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />}
+                          {isBugSource && <div className="w-1.5 h-1.5 rounded-full bg-[#FF5500] animate-ping" />}
                         </div>
-                        <span className={`text-xl font-black tracking-tight ${isBugSource ? 'text-red-400' : isCascade ? 'text-amber-400' : 'text-white'}`}>
+                        <span className={`text-xl font-bold tracking-tight transition-colors ${isBugSource ? 'text-[#FF5500]' : isCascade ? 'text-[#FFBD2E]' : 'text-white'}`}>
                           {layer.label}
                         </span>
                       </div>
-
                       <div className="text-right">
-                        <span className="text-[0.6rem] font-black text-white/20 uppercase tracking-[0.3em]">Price</span>
-                        <div className={`text-3xl font-black tracking-tighter ${isBugSource ? 'text-red-400' : isCascade ? 'text-amber-400' : 'text-white/40'}`}>
+                        <span className="text-[0.6rem] font-black uppercase tracking-[0.3em] text-white/20">Price</span>
+                        <div className={`text-3xl font-black tracking-tighter transition-colors ${isBugSource ? 'text-[#FF5500]' : isCascade ? 'text-[#FFBD2E]' : 'text-white/40'}`}>
                           {layer.cost}
                         </div>
                       </div>
@@ -149,7 +148,7 @@ export function RepresentationLadder() {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={() => handleBugClick(index)}
-                        className="w-full flex items-center justify-center gap-3 px-5 py-3 rounded-2xl border border-white/5 bg-white/[0.02] text-[0.65rem] font-black uppercase tracking-[0.1em] text-white/40 hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400 transition-all duration-500"
+                        className="w-full flex items-center justify-center gap-3 px-5 py-3 rounded-2xl border border-white/5 bg-white/[0.02] text-[0.65rem] font-black uppercase tracking-[0.1em] text-white/40 hover:bg-[#FF5500]/10 hover:border-[#FF5500]/20 hover:text-[#FF5500] transition-all duration-500"
                       >
                         <Bug className="h-3.5 w-3.5" />
                         Inject Leak
@@ -159,7 +158,7 @@ export function RepresentationLadder() {
                         key="source"
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="text-red-400 text-[0.65rem] font-black uppercase tracking-[0.2em] text-center"
+                        className="text-[#FF5500] text-[0.65rem] font-black uppercase tracking-[0.2em] text-center"
                       >
                         Epicenter
                       </motion.div>
@@ -168,7 +167,7 @@ export function RepresentationLadder() {
                         key="cascade"
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="text-amber-400 text-[0.65rem] font-black uppercase tracking-[0.2em] text-center"
+                        className="text-[#FFBD2E] text-[0.65rem] font-black uppercase tracking-[0.2em] text-center"
                       >
                         Impacted
                       </motion.div>
@@ -204,9 +203,9 @@ export function RepresentationLadder() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-              className="p-10 rounded-[2.5rem] bg-[#0a0c10] border border-white/[0.05] shadow-inner"
+              className="p-10 rounded-[2.5rem] bg-white/[0.01] border border-white/[0.03] shadow-inner"
             >
-              <span className="text-[0.6rem] font-black text-primary/60 uppercase tracking-[0.5em] block mb-6">Strategic Takeaway</span>
+              <span className="text-[0.6rem] font-black text-[#FF5500]/60 uppercase tracking-[0.5em] block mb-6">Strategic Takeaway</span>
               <p className="text-[1.1rem] leading-relaxed text-zinc-300 font-extralight italic">
                 {bugLevel === null &&
                   "Planning earns its keep because it is the cheapest layer for global reasoning. Press 'Inject' on any layer to visualize the cost cascade."}
