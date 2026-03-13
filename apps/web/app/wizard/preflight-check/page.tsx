@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { CommandCard } from "@/components/command-card";
 import { AlertCard, OutputPreview, DetailsSection } from "@/components/alert-card";
 import { ConnectionCheck } from "@/components/connection-check";
+import { formatSshTarget } from "@/lib/commandBuilder";
 import { markStepComplete } from "@/lib/wizardSteps";
 import { useWizardAnalytics } from "@/lib/hooks/useWizardAnalytics";
 import { useVPSIP } from "@/lib/userPreferences";
@@ -82,6 +83,7 @@ export default function PreflightCheckPage() {
   });
 
   const displayIP = vpsIP || "YOUR_VPS_IP";
+  const rootTarget = formatSshTarget("root", displayIP);
 
   const canContinue = ackPassed || ackFailed;
 
@@ -124,7 +126,13 @@ export default function PreflightCheckPage() {
       </div>
 
       {/* CRITICAL: Connection check */}
-      <ConnectionCheck vpsIP={displayIP} showExplainer showWhereAmI />
+      <ConnectionCheck
+        vpsIP={displayIP}
+        sshUser="root"
+        useIdentityFile={false}
+        showExplainer
+        showWhereAmI
+      />
 
       {/* Why this matters */}
       <AlertCard variant="info" icon={ShieldCheck} title="Fast safety check">
@@ -143,7 +151,7 @@ export default function PreflightCheckPage() {
             You&apos;re running this on your Windows computer, NOT on the VPS!
           </p>
           <p>
-            Go back to your terminal, type <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">ssh root@{displayIP}</code>,
+            Go back to your terminal, type <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">ssh {rootTarget}</code>,
             enter your VPS password, and THEN paste the preflight command.
           </p>
         </div>

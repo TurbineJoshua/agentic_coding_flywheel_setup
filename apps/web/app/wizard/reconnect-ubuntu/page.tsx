@@ -7,8 +7,9 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { CommandCard } from "@/components/command-card";
 import { AlertCard, OutputPreview } from "@/components/alert-card";
+import { formatSshTarget } from "@/lib/commandBuilder";
 import { markStepComplete } from "@/lib/wizardSteps";
-import { useVPSIP } from "@/lib/userPreferences";
+import { useSSHUsername, useVPSIP } from "@/lib/userPreferences";
 import { withCurrentSearch } from "@/lib/utils";
 import {
   SimplerGuide,
@@ -23,8 +24,9 @@ import { Jargon } from "@/components/jargon";
 export default function ReconnectUbuntuPage() {
   const router = useRouter();
   const [vpsIP, , vpsIPLoaded] = useVPSIP();
+  const [sshUsername, , sshUsernameLoaded] = useSSHUsername();
   const [isNavigating, setIsNavigating] = useState(false);
-  const ready = vpsIPLoaded;
+  const ready = vpsIPLoaded && sshUsernameLoaded;
 
   // Analytics tracking for this wizard step
   const { markComplete } = useWizardAnalytics({
@@ -63,8 +65,12 @@ export default function ReconnectUbuntuPage() {
     );
   }
 
-  const sshCommand = `ssh -i ~/.ssh/acfs_ed25519 ubuntu@${vpsIP}`;
-  const sshCommandWindows = `ssh -i $HOME\\.ssh\\acfs_ed25519 ubuntu@${vpsIP}`;
+  const effectiveUsername = sshUsername.trim() || "ubuntu";
+  const userTarget = formatSshTarget(effectiveUsername, vpsIP);
+  const userPrompt = `${effectiveUsername}@`;
+  const rootTarget = formatSshTarget("root", vpsIP);
+  const sshCommand = `ssh -i ~/.ssh/acfs_ed25519 ${userTarget}`;
+  const sshCommandWindows = `ssh -i $HOME\\.ssh\\acfs_ed25519 ${userTarget}`;
 
   return (
     <div className="space-y-8">
@@ -76,7 +82,7 @@ export default function ReconnectUbuntuPage() {
           </div>
           <div>
             <h1 className="bg-gradient-to-r from-foreground via-foreground to-muted-foreground bg-clip-text text-2xl font-bold tracking-tight text-transparent sm:text-3xl">
-              Reconnect as ubuntu
+              Reconnect with your SSH user
             </h1>
             <p className="text-sm text-muted-foreground">
               ~1 min
@@ -84,8 +90,8 @@ export default function ReconnectUbuntuPage() {
           </div>
         </div>
         <p className="text-muted-foreground">
-          If you ran the installer as <Jargon term="root-user">root</Jargon>, reconnect as the <Jargon term="ubuntu-user">ubuntu user</Jargon> to get
-          the full shell experience.
+          If you ran the installer as <Jargon term="root-user">root</Jargon>, reconnect as your normal SSH user (
+          <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{effectiveUsername}</code>) to get the full shell experience.
         </p>
       </div>
 
@@ -94,9 +100,9 @@ export default function ReconnectUbuntuPage() {
         <div className="flex items-start gap-3">
           <Check className="mt-0.5 h-5 w-5 text-[oklch(0.72_0.19_145)]" />
           <div>
-            <p className="font-medium text-foreground">Already connected as ubuntu?</p>
+            <p className="font-medium text-foreground">Already connected as {effectiveUsername}?</p>
             <p className="text-sm text-muted-foreground">
-              If your prompt shows <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">ubuntu@</code>, you can skip this step.
+              If your prompt shows <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{userPrompt}</code>, you can skip this step.
             </p>
             <Button
               variant="outline"
@@ -104,7 +110,7 @@ export default function ReconnectUbuntuPage() {
               className="mt-2"
               onClick={handleSkip}
             >
-              Skip, I&apos;m already ubuntu
+              Skip, I&apos;m already {effectiveUsername}
             </Button>
           </div>
         </div>
@@ -124,7 +130,7 @@ export default function ReconnectUbuntuPage() {
 
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            2. Reconnect as ubuntu:
+            2. Reconnect as {effectiveUsername}:
           </p>
 
           <div className="space-y-3">
@@ -149,7 +155,7 @@ export default function ReconnectUbuntuPage() {
           <CommandCard
             command={sshCommand}
             windowsCommand={sshCommandWindows}
-            description="Reconnect as ubuntu user"
+            description={`Reconnect as ${effectiveUsername}`}
             runLocation="local"
             showCheckbox
             persistKey="reconnect-ubuntu"
@@ -166,13 +172,13 @@ export default function ReconnectUbuntuPage() {
                 </li>
                 <li>
                   <strong className="text-foreground">You&apos;re using the wrong credentials</strong> —
-                  the ubuntu user uses your <em>SSH key</em>, NOT the root password
+                  your configured SSH user (<code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">{effectiveUsername}</code>) uses your <em>SSH key</em>, NOT the root password
                 </li>
               </ol>
               <p className="mt-3 font-medium text-foreground">
                 If you&apos;re being asked for a password, try connecting as root instead:
               </p>
-              <CommandCard command={`ssh root@${vpsIP}`} runLocation="local" className="mt-2" />
+              <CommandCard command={`ssh ${rootTarget}`} runLocation="local" className="mt-2" />
               <p className="mt-2 text-xs text-muted-foreground">
                 Use the VPS root password (the one from your provider), then re-run the installer.
               </p>
@@ -185,7 +191,7 @@ export default function ReconnectUbuntuPage() {
       <OutputPreview title="You'll know it worked when:">
         <ul className="space-y-1 text-sm">
           <li className="text-[oklch(0.72_0.19_145)]">
-            • Your prompt shows <code className="text-muted-foreground">ubuntu@</code> (not <code className="text-muted-foreground">root@</code>)
+            • Your prompt shows <code className="text-muted-foreground">{userPrompt}</code> (not <code className="text-muted-foreground">root@</code>)
           </li>
           <li className="text-[oklch(0.72_0.19_145)]">• You see the colorful powerlevel10k prompt</li>
           <li className="text-[oklch(0.72_0.19_145)]">• The shell feels more responsive</li>
@@ -217,15 +223,15 @@ export default function ReconnectUbuntuPage() {
       {/* Beginner Guide */}
       <SimplerGuide>
         <div className="space-y-6">
-          <GuideExplain term="Why reconnect as ubuntu?">
+          <GuideExplain term="Why reconnect with your SSH user?">
             During installation, you may have connected as &quot;root&quot;, the super-admin
-            account. Now we want you to use the &quot;ubuntu&quot; account instead because:
+            account. Now we want you to use your normal SSH user instead because:
             <br /><br />
-            <strong>1. Safety:</strong> The root account can accidentally break things.
-            The ubuntu account is safer for everyday use.
+            <strong>1. Safety:</strong> Day-to-day ACFS work should happen from a non-root login whenever possible.
+            That keeps routine commands away from the most dangerous account.
             <br /><br />
             <strong>2. Better experience:</strong> The installer set up special features
-            (like the colorful prompt) for the ubuntu user.
+            (like the colorful prompt) for your configured SSH user.
           </GuideExplain>
 
           <GuideSection title="How do I know which user I am?">
@@ -236,34 +242,34 @@ export default function ReconnectUbuntuPage() {
                 means you&apos;re logged in as root (note the <strong>#</strong> symbol)
               </li>
               <li>
-                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">ubuntu@vps:~$</code>
-                means you&apos;re logged in as ubuntu (note the <strong>$</strong> symbol)
+                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">{userPrompt}vps:~$</code>
+                means you&apos;re logged in as {effectiveUsername} (note the <strong>$</strong> symbol)
               </li>
             </ul>
           </GuideSection>
 
-          <GuideSection title="Step-by-Step: Switching to Ubuntu">
+          <GuideSection title="Step-by-step: switching users">
             <div className="space-y-4">
               <GuideStep number={1} title="Disconnect from the current session">
                 Type <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">exit</code>
                 and press Enter. This closes your connection to the VPS.
               </GuideStep>
 
-              <GuideStep number={2} title="Connect as ubuntu">
+              <GuideStep number={2} title={`Connect as ${effectiveUsername}`}>
                 Copy and paste the SSH command shown above (the one with{" "}
-                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">ubuntu@</code>)
+                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">{userPrompt}</code>)
                 and press Enter.
               </GuideStep>
 
-              <GuideStep number={3} title="Verify you're ubuntu">
-                Your prompt should now show &quot;ubuntu@&quot; at the beginning.
+              <GuideStep number={3} title="Verify you&apos;re using the right user">
+                Your prompt should now show <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">{userPrompt}</code> at the beginning.
                 You might also see a fancy colorful prompt!
               </GuideStep>
             </div>
           </GuideSection>
 
           <GuideTip>
-            If you were already connected as ubuntu (skip button above applies to you),
+            If you were already connected as {effectiveUsername} (skip button above applies to you),
             just click &quot;Skip&quot; or &quot;Continue&quot;; you don&apos;t need to do anything!
           </GuideTip>
 
@@ -284,7 +290,7 @@ export default function ReconnectUbuntuPage() {
       {/* Continue button */}
       <div className="flex justify-end pt-4">
         <Button onClick={handleContinue} disabled={isNavigating} size="lg" disableMotion>
-          {isNavigating ? "Loading..." : "I'm connected as ubuntu"}
+          {isNavigating ? "Loading..." : `I'm connected as ${effectiveUsername}`}
         </Button>
       </div>
     </div>

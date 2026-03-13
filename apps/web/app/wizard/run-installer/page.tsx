@@ -22,7 +22,8 @@ import { TrackedLink } from "@/components/tracked-link";
 import { markStepComplete } from "@/lib/wizardSteps";
 import { useWizardAnalytics } from "@/lib/hooks/useWizardAnalytics";
 import { withCurrentSearch } from "@/lib/utils";
-import { normalizeGitRef, useACFSRef, useInstallMode, type InstallMode } from "@/lib/userPreferences";
+import { buildInstallCommand, formatSshTarget } from "@/lib/commandBuilder";
+import { normalizeGitRef, useACFSRef, useInstallMode, useSSHUsername, useVPSIP } from "@/lib/userPreferences";
 import {
   SimplerGuide,
   GuideSection,
@@ -32,24 +33,6 @@ import {
   GuideCaution,
 } from "@/components/simpler-guide";
 import { Jargon } from "@/components/jargon";
-
-// Base URL for raw GitHub content
-const GITHUB_RAW_BASE = "https://raw.githubusercontent.com/Dicklesworthstone/agentic_coding_flywheel_setup";
-
-// Build install command based on options
-function buildInstallCommand(usePinnedRef: boolean, pinnedRef: string, mode: InstallMode): string {
-  const safePinnedRef = normalizeGitRef(pinnedRef);
-  const shouldPin = usePinnedRef && !!safePinnedRef;
-  const ref = shouldPin ? safePinnedRef : "main";
-  const url = `${GITHUB_RAW_BASE}/${ref}/install.sh?$(date +%s)`;
-
-  if (shouldPin && safePinnedRef) {
-    // With pinned ref: set ACFS_REF env var so installer uses exact commit
-    return `curl -fsSL "${url}" | ACFS_REF="${safePinnedRef}" bash -s -- --yes --mode ${mode}`;
-  }
-  // Default: use main branch (always gets latest)
-  return `curl -fsSL "${url}" | bash -s -- --yes --mode ${mode}`;
-}
 
 const WHAT_IT_INSTALLS = [
   {
@@ -83,11 +66,20 @@ export default function RunInstallerPage() {
   const [isNavigating, setIsNavigating] = useState(false);
   const [installMode, , installModeLoaded] = useInstallMode();
   const [pinnedRef, setPinnedRef] = useACFSRef();
+  const [vpsIP, , vpsIPLoaded] = useVPSIP();
+  const [sshUsername, , sshUsernameLoaded] = useSSHUsername();
   const [pinEditorOpen, setPinEditorOpen] = useState(false);
   const usePinnedRef = pinEditorOpen || pinnedRef !== null;
   const refInput = pinnedRef ?? "main";
   const safePinnedRef = useMemo(() => normalizeGitRef(refInput), [refInput]);
   const effectiveInstallMode = installModeLoaded ? installMode : "vibe";
+  const effectiveRef = usePinnedRef ? refInput : null;
+  const effectiveVpsIP = vpsIPLoaded && vpsIP ? vpsIP : "YOUR_IP";
+  const effectiveSSHUsername = sshUsernameLoaded ? sshUsername : "ubuntu";
+  const reconnectCommand = useMemo(
+    () => `ssh -i ~/.ssh/acfs_ed25519 ${formatSshTarget(effectiveSSHUsername, effectiveVpsIP)}`,
+    [effectiveSSHUsername, effectiveVpsIP],
+  );
   const effectiveSourceRef = useMemo(
     () => (usePinnedRef && safePinnedRef ? safePinnedRef : "main"),
     [usePinnedRef, safePinnedRef],
@@ -112,8 +104,8 @@ export default function RunInstallerPage() {
 
   // Build command dynamically based on pinning options
   const installCommand = useMemo(
-    () => buildInstallCommand(usePinnedRef, refInput, effectiveInstallMode),
-    [usePinnedRef, refInput, effectiveInstallMode]
+    () => buildInstallCommand(effectiveInstallMode, effectiveRef, effectiveSSHUsername),
+    [effectiveInstallMode, effectiveRef, effectiveSSHUsername],
   );
 
   // Analytics tracking for this wizard step
@@ -424,7 +416,7 @@ export default function RunInstallerPage() {
       <OutputPreview title="You'll know it's done when you see:">
         <p className="text-[oklch(0.72_0.19_145)]">✔ Agent Flywheel installation complete!</p>
         <p className="text-muted-foreground">
-          Please reconnect as: ssh ubuntu@YOUR_IP
+          Please reconnect as: {reconnectCommand}
         </p>
       </OutputPreview>
 

@@ -1,11 +1,18 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PartyPopper, BookOpen, ExternalLink, Sparkles, ArrowRight, GraduationCap, Terminal, RefreshCw, FolderPlus, FolderOpen } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { CommandCard, CodeBlock } from "@/components/command-card";
 import { AlertCard } from "@/components/alert-card";
-import { markStepComplete, setCompletedSteps, TOTAL_STEPS } from "@/lib/wizardSteps";
+import {
+  getCompletedSteps,
+  markStepComplete,
+  setCompletedSteps,
+  TOTAL_STEPS,
+  validateStep,
+} from "@/lib/wizardSteps";
 import { trackConversion } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -18,7 +25,8 @@ import {
 } from "@/components/simpler-guide";
 import { useWizardAnalytics } from "@/lib/hooks/useWizardAnalytics";
 import { Jargon } from "@/components/jargon";
-import { useVPSIP } from "@/lib/userPreferences";
+import { formatSshTarget } from "@/lib/commandBuilder";
+import { useSSHUsername, useVPSIP } from "@/lib/userPreferences";
 import { withCurrentSearch } from "@/lib/utils";
 import { CommandBuilderPanel } from "@/components/command-builder-panel";
 
@@ -82,6 +90,11 @@ function ConfettiParticle({ delay, left, color, size, rotation, duration, isRoun
 }
 
 export default function LaunchOnboardingPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const hasStatusCheckHandoff = searchParams.get("handoff") === "status-check";
+
   // Analytics tracking for this wizard step
   const { markComplete } = useWizardAnalytics({
     step: "launch_onboarding",
@@ -91,16 +104,42 @@ export default function LaunchOnboardingPage() {
 
   // Get user's VPS IP for reconnection instructions
   const [vpsIP] = useVPSIP();
+  const [sshUsername, , sshUsernameLoaded] = useSSHUsername();
   const displayIP = vpsIP || "YOUR_VPS_IP";
+  const effectiveUsername = sshUsername.trim() || "ubuntu";
+  const userTarget = formatSshTarget(effectiveUsername, displayIP);
+  const homeDir = effectiveUsername === "root" ? "/root" : `/home/${effectiveUsername}`;
+  const sshConfigSnippet = `Host myserver\n    HostName ${displayIP}\n    User ${effectiveUsername}\n    IdentityFile ~/.ssh/acfs_ed25519`;
 
-  // Mark all steps complete on reaching this page
+  // Only persist full completion when the user actually reached the final step
+  // through the normal flow. A direct visit/bookmark should not unlock the wizard.
   useEffect(() => {
+    const completedSteps = getCompletedSteps();
+    const canAccess =
+      hasStatusCheckHandoff ||
+      (completedSteps.includes(12) && validateStep(12).valid);
+
+    if (!canAccess) {
+      router.replace(withCurrentSearch("/wizard/status-check"));
+      return;
+    }
+
     markComplete({ wizard_completed: true });
     markStepComplete(13);
-    // Mark all steps as completed
     const allSteps = Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1);
     setCompletedSteps(allSteps);
-  }, [markComplete]);
+    // Use setTimeout to avoid the ESLint set-state-in-effect rule, since
+    // this unlock is logically part of the navigation guard check above.
+    setTimeout(() => setIsUnlocked(true), 0);
+  }, [hasStatusCheckHandoff, markComplete, router]);
+
+  if (!isUnlocked || !sshUsernameLoaded) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -198,8 +237,8 @@ export default function LaunchOnboardingPage() {
               <div>
                 <p className="font-medium">Codex CLI (if using OpenAI)</p>
                 <CommandCard
-                  command="codex login"
-                  description="Starts the login flow. If it prints a URL, open it on your laptop to authenticate."
+                  command="codex login --device-auth"
+                  description="Recommended on a VPS. It uses device auth instead of the localhost callback flow."
                   runLocation="vps"
                 />
               </div>
@@ -208,7 +247,11 @@ export default function LaunchOnboardingPage() {
               <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[oklch(0.78_0.16_75)] text-[oklch(0.15_0.02_75)] font-bold text-sm">3</div>
               <div>
                 <p className="font-medium">Gemini CLI (optional)</p>
-                <CommandCard command="gemini" description="Follow the prompts to authenticate (Google account)." runLocation="vps" />
+                <CommandCard
+                  command='export GEMINI_API_KEY="your-gemini-api-key"'
+                  description="Recommended on a headless VPS. Add the key to ~/.gemini/.env or your shell config, then run gemini."
+                  runLocation="vps"
+                />
               </div>
             </div>
           </div>
@@ -269,8 +312,8 @@ export default function LaunchOnboardingPage() {
             <div className="space-y-2">
               <h3 className="font-medium">Connect to your VPS</h3>
               <CommandCard
-                command={`ssh -i ~/.ssh/acfs_ed25519 ubuntu@${displayIP}`}
-                windowsCommand={`ssh -i $HOME\\.ssh\\acfs_ed25519 ubuntu@${displayIP}`}
+                command={`ssh -i ~/.ssh/acfs_ed25519 ${userTarget}`}
+                windowsCommand={`ssh -i $HOME\\.ssh\\acfs_ed25519 ${userTarget}`}
                 runLocation="local"
               />
               <p className="text-sm text-muted-foreground">Open your terminal and SSH in.</p>
@@ -397,7 +440,7 @@ export default function LaunchOnboardingPage() {
           <div className="space-y-2">
             <p className="font-medium">Your home folder</p>
             <p className="text-sm text-muted-foreground">
-              Everything you create lives in <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">/home/ubuntu</code> (or just <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">~</code>).
+              Everything you create lives in <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{homeDir}</code> (or just <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">~</code>).
             </p>
             <CommandCard command="cd ~" description="Go to your home folder" runLocation="vps" />
           </div>
@@ -554,8 +597,8 @@ export default function LaunchOnboardingPage() {
           <div>
             <h3 className="font-medium">2. Connect to your VPS</h3>
             <CommandCard
-              command={`ssh -i ~/.ssh/acfs_ed25519 ubuntu@${displayIP}`}
-              windowsCommand={`ssh -i $HOME\\.ssh\\acfs_ed25519 ubuntu@${displayIP}`}
+              command={`ssh -i ~/.ssh/acfs_ed25519 ${userTarget}`}
+              windowsCommand={`ssh -i $HOME\\.ssh\\acfs_ed25519 ${userTarget}`}
               runLocation="local"
             />
           </div>
@@ -579,7 +622,7 @@ export default function LaunchOnboardingPage() {
             <p className="text-sm text-muted-foreground">
               Add this to your local <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">~/.ssh/config</code> file:
             </p>
-            <CodeBlock code={`Host myserver\n    HostName ${displayIP}\n    User ubuntu\n    IdentityFile ~/.ssh/acfs_ed25519`} language="ssh-config" />
+            <CodeBlock code={sshConfigSnippet} language="ssh-config" />
             <p className="text-sm text-muted-foreground">
               Then just type: <code className="rounded bg-muted px-2 py-1 font-mono text-xs">ssh myserver</code>
             </p>
@@ -589,7 +632,7 @@ export default function LaunchOnboardingPage() {
         {/* Windows Terminal tip */}
         <div className="mt-6 rounded-lg border border-[oklch(0.75_0.18_195/0.3)] bg-[oklch(0.75_0.18_195/0.1)] p-4">
           <Link
-            href={withCurrentSearch("/wizard/windows-terminal-setup")}
+            href={withCurrentSearch("/wizard/windows-terminal-setup?from=launch-onboarding")}
             className="flex items-start gap-3"
           >
             <Terminal className="mt-0.5 h-5 w-5 text-[oklch(0.75_0.18_195)]" />
@@ -698,7 +741,7 @@ export default function LaunchOnboardingPage() {
                 </li>
                 <li>Search: <span className="font-mono">Remote-SSH: Connect to Host</span></li>
                 <li>
-                  Connect to <span className="font-mono">ubuntu@{displayIP}</span> (it will use your SSH key)
+                  Connect to <span className="font-mono">{userTarget}</span> (it will use your SSH key)
                 </li>
               </ol>
               <GuideTip className="mt-4">

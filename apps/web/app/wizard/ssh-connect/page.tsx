@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { CommandCard } from "@/components/command-card";
 import { AlertCard, OutputPreview } from "@/components/alert-card";
 import { TwoComputersExplainer } from "@/components/connection-check";
+import { formatSshHost, formatSshTarget } from "@/lib/commandBuilder";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { markStepComplete } from "@/lib/wizardSteps";
@@ -172,11 +173,14 @@ export default function SSHConnectPage() {
   }
 
   // Password-first flow: connect as root with password
-  const sshCommand = `ssh root@${vpsIP}`;
-  const sshCommandWindows = `ssh root@${vpsIP}`;
+  const sshHost = formatSshHost(vpsIP);
+  const rootTarget = formatSshTarget("root", vpsIP);
+  const ubuntuTarget = formatSshTarget("ubuntu", vpsIP);
+  const sshCommand = `ssh ${rootTarget}`;
+  const sshCommandWindows = `ssh ${rootTarget}`;
   // Fallback if provider uses ubuntu user
-  const sshCommandUbuntu = `ssh ubuntu@${vpsIP}`;
-  const sshCommandUbuntuWindows = `ssh ubuntu@${vpsIP}`;
+  const sshCommandUbuntu = `ssh ${ubuntuTarget}`;
+  const sshCommandUbuntuWindows = `ssh ${ubuntuTarget}`;
 
   return (
     <div className="space-y-8">
@@ -255,7 +259,7 @@ export default function SSHConnectPage() {
         </p>
         <OutputPreview title="You'll see something like:">
           <div className="space-y-1">
-            <p className="text-amber-400">The authenticity of host &apos;{vpsIP} ({vpsIP})&apos; can&apos;t be established.</p>
+            <p className="text-amber-400">The authenticity of host &apos;{sshHost} ({vpsIP})&apos; can&apos;t be established.</p>
             <p className="text-muted-foreground">ED25519 key fingerprint is SHA256:xYz123abc456def...</p>
             <p className="text-amber-400">Are you sure you want to continue connecting (yes/no/[fingerprint])?</p>
           </div>
@@ -276,7 +280,7 @@ export default function SSHConnectPage() {
           After typing &quot;yes&quot;, you&apos;ll be asked for your password:
         </p>
         <OutputPreview title="You'll see:">
-          <p className="text-muted-foreground">root@{vpsIP}&apos;s password: <span className="animate-pulse">_</span></p>
+          <p className="text-muted-foreground">{rootTarget}&apos;s password: <span className="animate-pulse">_</span></p>
         </OutputPreview>
         <AlertCard variant="info" title="The password won't appear as you type">
           <p>

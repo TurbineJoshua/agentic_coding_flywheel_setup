@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { Terminal, Home, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Stepper, StepperMobile } from "@/components/stepper";
@@ -19,18 +19,23 @@ export default function WizardLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const currentSlug = pathname.split("/").pop() || "";
+  const isBonusRoute = currentSlug === "windows-terminal-setup";
 
   // Extract current step from URL path
   const currentStep = useMemo(() => {
-    const slug = pathname.split("/").pop() || "";
-    const step = getStepBySlug(slug);
+    const step = getStepBySlug(currentSlug);
     return step?.id ?? 1;
-  }, [pathname]);
+  }, [currentSlug]);
 
   const prevStep = WIZARD_STEPS.find((s) => s.id === currentStep - 1);
   const nextStep = WIZARD_STEPS.find((s) => s.id === currentStep + 1);
 
   const { validate, validationErrors, clearErrors } = useStepValidation();
+
+  useEffect(() => {
+    clearErrors();
+  }, [pathname, clearErrors]);
 
   const handleStepClick = useCallback(
     (stepId: number) => {
@@ -51,6 +56,9 @@ export default function WizardLayout({
   );
 
   const progress = (currentStep / WIZARD_STEPS.length) * 100;
+  const hideSharedStepChrome = isBonusRoute;
+  const usesPageLevelNavigation =
+    currentStep === 5 || currentStep === 12 || hideSharedStepChrome;
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-background">
@@ -74,22 +82,32 @@ export default function WizardLayout({
             </div>
 
             {/* Progress indicator */}
-            <div className="px-6 py-4">
-              <div className="mb-2 flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Progress</span>
-                <span className="font-mono text-primary">{currentStep}/{WIZARD_STEPS.length}</span>
+            {hideSharedStepChrome ? (
+              <div className="px-6 py-4 text-xs text-muted-foreground">Optional guide</div>
+            ) : (
+              <div className="px-6 py-4">
+                <div className="mb-2 flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Progress</span>
+                  <span className="font-mono text-primary">{currentStep}/{WIZARD_STEPS.length}</span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full bg-gradient-to-r from-primary to-[oklch(0.7_0.2_330)] transition-all duration-500"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
               </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full bg-gradient-to-r from-primary to-[oklch(0.7_0.2_330)] transition-all duration-500"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-            </div>
+            )}
 
             {/* Step list */}
             <div className="flex-1 overflow-y-auto px-4 py-2">
-              <Stepper currentStep={currentStep} onStepClick={handleStepClick} />
+              {hideSharedStepChrome ? (
+                <div className="rounded-xl border border-border/50 bg-card/40 px-4 py-3 text-sm text-muted-foreground">
+                  This is an optional detour, not a numbered wizard step.
+                </div>
+              ) : (
+                <Stepper currentStep={currentStep} onStepClick={handleStepClick} />
+              )}
             </div>
 
             {/* Sidebar footer */}
@@ -133,7 +151,13 @@ export default function WizardLayout({
                 <Home className="h-4 w-4" />
               </Link>
               <div className="text-xs text-muted-foreground">
-                <span className="font-mono text-primary">{currentStep}</span>/{WIZARD_STEPS.length}
+                {hideSharedStepChrome ? (
+                  <span>Optional</span>
+                ) : (
+                  <>
+                    <span className="font-mono text-primary">{currentStep}</span>/{WIZARD_STEPS.length}
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -144,12 +168,16 @@ export default function WizardLayout({
               {/* Step title (desktop) */}
               <div className="mb-8 hidden md:block">
                 <div className="mb-2 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 font-mono text-xs text-primary">
-                      {currentStep}
-                    </span>
-                    <span>Step {currentStep} of {WIZARD_STEPS.length}</span>
-                  </div>
+                  {hideSharedStepChrome ? (
+                    <div className="text-sm text-muted-foreground">Optional guide</div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 font-mono text-xs text-primary">
+                        {currentStep}
+                      </span>
+                      <span>Step {currentStep} of {WIZARD_STEPS.length}</span>
+                    </div>
+                  )}
                   <HelpPanel currentStep={currentStep} />
                 </div>
               </div>
@@ -173,7 +201,8 @@ export default function WizardLayout({
               <div className="animate-scale-in">{children}</div>
 
               {/* Navigation buttons (desktop) */}
-              <div className="mt-12 hidden items-center justify-between md:flex">
+              {!hideSharedStepChrome && (
+                <div className="mt-12 hidden items-center justify-between md:flex">
                 {prevStep ? (
                   <Button
                     variant="ghost"
@@ -186,8 +215,7 @@ export default function WizardLayout({
                 ) : (
                   <div />
                 )}
-                {/* Hide Next button on step 5 - page has its own validated Continue button */}
-                {nextStep && currentStep !== 5 && (
+                {nextStep && !usesPageLevelNavigation && (
                   <Button
                     onClick={() => handleStepClick(nextStep.id)}
                     className="bg-primary text-primary-foreground"
@@ -196,7 +224,8 @@ export default function WizardLayout({
                     <ChevronRight className="ml-1 h-4 w-4" />
                   </Button>
                 )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         </main>
@@ -204,22 +233,24 @@ export default function WizardLayout({
 
       {/* Mobile stepper - shown only on mobile */}
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/50 bg-background/95 px-4 pt-4 backdrop-blur-md bottom-nav-safe md:hidden">
-        <StepperMobile currentStep={currentStep} onStepClick={handleStepClick} />
+        {!hideSharedStepChrome && (
+          <StepperMobile currentStep={currentStep} onStepClick={handleStepClick} />
+        )}
 
         {/* Mobile navigation - 48px buttons for proper touch targets */}
-        <div className="mt-4 flex items-center gap-3">
+        {!hideSharedStepChrome && (
+          <div className="mt-4 flex items-center gap-3">
           <Button
             variant="outline"
             size="lg"
             onClick={() => prevStep && handleStepClick(prevStep.id)}
             disabled={!prevStep}
-            className={currentStep === 5 ? "w-full" : "flex-1"}
+            className={usesPageLevelNavigation ? "w-full" : "flex-1"}
           >
             <ChevronLeft className="mr-1 h-5 w-5" />
             Back
           </Button>
-          {/* Hide Next button on step 5 - page has its own validated Continue button */}
-          {currentStep !== 5 && (
+          {nextStep && !usesPageLevelNavigation && (
             <Button
               size="lg"
               onClick={() => nextStep && handleStepClick(nextStep.id)}
@@ -230,7 +261,8 @@ export default function WizardLayout({
               <ChevronRight className="ml-1 h-5 w-5" />
             </Button>
           )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

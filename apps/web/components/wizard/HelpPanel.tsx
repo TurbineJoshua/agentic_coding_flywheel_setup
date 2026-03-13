@@ -9,7 +9,7 @@
  * @see bd-1yfv
  */
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   HelpCircle,
   X,
@@ -19,6 +19,7 @@ import {
   Lightbulb,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { copyTextToClipboard } from "@/lib/utils";
 import { STEP_HELP, getDebugInfo, type StepHelp } from "@/lib/stepHelp";
 
 const DEFAULT_HELP: StepHelp = {
@@ -37,6 +38,15 @@ interface HelpPanelProps {
 export function HelpPanel({ currentStep }: HelpPanelProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [copied, setCopied] = useState(false);
+  const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyResetTimerRef.current) {
+        clearTimeout(copyResetTimerRef.current);
+      }
+    };
+  }, []);
 
   const help = STEP_HELP[currentStep] ?? DEFAULT_HELP;
   const hasIssues = help.commonIssues.length > 0;
@@ -52,21 +62,18 @@ export function HelpPanel({ currentStep }: HelpPanelProps) {
 
   const copyDebugInfo = useCallback(async () => {
     const info = getDebugInfo(currentStep);
-    try {
-      await navigator.clipboard.writeText(info);
-    } catch {
-      // Fallback for older browsers / non-HTTPS
-      const textarea = document.createElement("textarea");
-      textarea.value = info;
-      textarea.style.position = "fixed";
-      textarea.style.opacity = "0";
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textarea);
+    const copiedOk = await copyTextToClipboard(info);
+    if (!copiedOk) {
+      return;
     }
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (copyResetTimerRef.current) {
+      clearTimeout(copyResetTimerRef.current);
+    }
+    copyResetTimerRef.current = setTimeout(() => {
+      setCopied(false);
+      copyResetTimerRef.current = null;
+    }, 2000);
   }, [currentStep]);
 
   return (

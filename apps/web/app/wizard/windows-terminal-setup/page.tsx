@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Terminal,
   Settings,
@@ -16,8 +16,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { AlertCard, OutputPreview } from "@/components/alert-card";
 import { CodeBlock } from "@/components/ui/code-block";
-import { useVPSIP } from "@/lib/userPreferences";
-import { withCurrentSearch } from "@/lib/utils";
+import { formatSshTarget } from "@/lib/commandBuilder";
+import { useVPSIP, useSSHUsername } from "@/lib/userPreferences";
+import { copyTextToClipboard, withCurrentSearch } from "@/lib/utils";
 import {
   SimplerGuide,
   GuideSection,
@@ -28,9 +29,12 @@ import { useWizardAnalytics } from "@/lib/hooks/useWizardAnalytics";
 
 export default function WindowsTerminalSetupPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [vpsIP, , vpsIPLoaded] = useVPSIP();
+  const [sshUsername, , sshUsernameLoaded] = useSSHUsername();
   const [copied, setCopied] = useState(false);
-  const ready = vpsIPLoaded;
+  const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ready = vpsIPLoaded && sshUsernameLoaded;
 
   // Analytics tracking for this wizard step
   useWizardAnalytics({
@@ -47,31 +51,48 @@ export default function WindowsTerminalSetupPage() {
     }
   }, [ready, vpsIP, router]);
 
+  useEffect(() => {
+    return () => {
+      if (copyResetTimerRef.current) {
+        clearTimeout(copyResetTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleBack = useCallback(() => {
-    router.back();
-  }, [router]);
+    const fallbackPath =
+      searchParams.get("from") === "launch-onboarding"
+        ? "/wizard/launch-onboarding"
+        : "/wizard/verify-key-connection";
+    if (
+      typeof window !== "undefined" &&
+      searchParams.has("from") &&
+      window.history.length > 1
+    ) {
+      router.back();
+      return;
+    }
+    router.push(withCurrentSearch(fallbackPath));
+  }, [router, searchParams]);
 
   const displayIP = vpsIP || "YOUR_VPS_IP";
-  const sshCommandLine = `ssh -i %USERPROFILE%\\.ssh\\acfs_ed25519 ubuntu@${displayIP}`;
+  const effectiveUsername = sshUsername.trim() || "ubuntu";
+  const ubuntuTarget = formatSshTarget(effectiveUsername, displayIP);
+  const sshCommandLine = `ssh -i $HOME\\.ssh\\acfs_ed25519 ${ubuntuTarget}`;
 
   const handleCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(sshCommandLine);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Fallback
-      const textarea = document.createElement("textarea");
-      textarea.value = sshCommandLine;
-      textarea.style.position = "fixed";
-      textarea.style.opacity = "0";
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textarea);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+    const copiedOk = await copyTextToClipboard(sshCommandLine);
+    if (!copiedOk) {
+      return;
     }
+    setCopied(true);
+    if (copyResetTimerRef.current) {
+      clearTimeout(copyResetTimerRef.current);
+    }
+    copyResetTimerRef.current = setTimeout(() => {
+      setCopied(false);
+      copyResetTimerRef.current = null;
+    }, 2000);
   }, [sshCommandLine]);
 
   if (!ready || !vpsIP) {
@@ -241,9 +262,9 @@ export default function WindowsTerminalSetupPage() {
       {/* What you'll see */}
       <OutputPreview title="When you click your new profile:">
         <div className="space-y-1 font-mono text-xs">
-          <p className="text-muted-foreground">Connecting to ubuntu@{displayIP}...</p>
+          <p className="text-muted-foreground">Connecting to {ubuntuTarget}...</p>
           <p className="text-[oklch(0.72_0.19_145)]">Welcome to Ubuntu 25.10</p>
-          <p className="text-[oklch(0.72_0.19_145)]">ubuntu@vps:~$</p>
+          <p className="text-[oklch(0.72_0.19_145)]">{effectiveUsername}@vps:~$</p>
         </div>
       </OutputPreview>
 
@@ -291,7 +312,7 @@ export default function WindowsTerminalSetupPage() {
                 <p className="text-sm text-muted-foreground">
                   Make sure your SSH key file exists at{" "}
                   <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
-                    %USERPROFILE%\.ssh\acfs_ed25519
+                    $HOME\.ssh\acfs_ed25519
                   </code>
                   . If you used a different key name, update the command line accordingly.
                 </p>
@@ -307,7 +328,7 @@ export default function WindowsTerminalSetupPage() {
                 <p className="text-sm text-muted-foreground">
                   This can happen if you rebuilt your VPS. You may need to remove the old key from{" "}
                   <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
-                    %USERPROFILE%\.ssh\known_hosts
+                    $HOME\.ssh\known_hosts
                   </code>
                   .
                 </p>

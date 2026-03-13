@@ -176,7 +176,14 @@ export default function OSSelectionPage() {
       </div>
 
       {/* OS Options */}
-      <div data-os-selection className="grid gap-6 sm:grid-cols-3" role="radiogroup" aria-label="Select your operating system" style={{ touchAction: "pan-y" }}>
+      <div
+        data-os-selection
+        className="grid gap-6 sm:grid-cols-3"
+        role="radiogroup"
+        aria-label="Select your operating system"
+        tabIndex={-1}
+        style={{ touchAction: "pan-y" }}
+      >
         <OSCard
           icon={<Apple className="h-10 w-10" />}
           title="Mac"

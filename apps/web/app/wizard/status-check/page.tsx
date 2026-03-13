@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle,
@@ -15,10 +16,14 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { CommandCard, CodeBlock } from "@/components/command-card";
+import {
+  CommandCard,
+  CodeBlock,
+  commandCompletionKeys,
+} from "@/components/command-card";
 import { AlertCard, OutputPreview } from "@/components/alert-card";
 import { WhereAmICheck } from "@/components/connection-check";
-import { markStepComplete } from "@/lib/wizardSteps";
+import { markStepComplete, validateStep } from "@/lib/wizardSteps";
 import {
   SERVICES,
   CATEGORY_NAMES,
@@ -35,8 +40,12 @@ import {
 } from "@/components/simpler-guide";
 import { useWizardAnalytics } from "@/lib/hooks/useWizardAnalytics";
 import { Jargon } from "@/components/jargon";
-import { withCurrentSearch } from "@/lib/utils";
+import { buildInstallCommand, formatSshTarget } from "@/lib/commandBuilder";
+import { useACFSRef, useInstallMode, useSSHUsername, useVPSIP } from "@/lib/userPreferences";
+import { safeGetItem, withCurrentSearch } from "@/lib/utils";
 
+const STATUS_CHECK_COMPLETION_KEY = "acfs-command-flywheel-doctor";
+const LAUNCH_ONBOARDING_HANDOFF = "status-check";
 const QUICK_CHECKS = [
   {
     command: "cc --version",
@@ -80,9 +89,51 @@ function getAuthServices(): Record<ServiceCategory, Service[]> {
   return groups;
 }
 
+function getAuthCommandDescription(service: Service): string {
+  switch (service.id) {
+    case "tailscale":
+      return "Bring Tailscale up and approve this machine";
+    case "codex-cli":
+      return "Authenticate Codex with device auth";
+    case "gemini-cli":
+      return "Set GEMINI_API_KEY for headless Gemini auth";
+    case "vercel":
+      return "Start Vercel's device login flow";
+    case "supabase":
+      return "Authenticate Supabase with an access token";
+    case "cloudflare":
+      return "Set your Cloudflare API token";
+    default:
+      return `Log in to ${service.name}`;
+  }
+}
+
 export default function StatusCheckPage() {
   const router = useRouter();
   const [isNavigating, setIsNavigating] = useState(false);
+  const [vpsIP, , vpsIPLoaded] = useVPSIP();
+  const [sshUsername, , sshUsernameLoaded] = useSSHUsername();
+  const [installMode, , installModeLoaded] = useInstallMode();
+  const [acfsRef, , acfsRefLoaded] = useACFSRef();
+  const { data: doctorConfirmed = false } = useQuery({
+    queryKey: commandCompletionKeys.completion(STATUS_CHECK_COMPLETION_KEY),
+    queryFn: () => safeGetItem(STATUS_CHECK_COMPLETION_KEY) === "true",
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+  const effectiveVpsIP = vpsIPLoaded && vpsIP ? vpsIP : "YOUR_VPS_IP";
+  const effectiveSSHUsername = sshUsernameLoaded ? sshUsername : "ubuntu";
+  const reconnectTarget = formatSshTarget(effectiveSSHUsername, effectiveVpsIP);
+  const reconnectCommand = `ssh -i ~/.ssh/acfs_ed25519 ${reconnectTarget}`;
+  const reconnectWindowsCommand = `ssh -i $HOME\\.ssh\\acfs_ed25519 ${reconnectTarget}`;
+  const codexTunnelCommand = `ssh -i ~/.ssh/acfs_ed25519 -L 1455:localhost:1455 ${reconnectTarget}`;
+  const codexTunnelWindowsCommand = `ssh -i $HOME\\.ssh\\acfs_ed25519 -L 1455:localhost:1455 ${reconnectTarget}`;
+  const reinstallCommand = buildInstallCommand(
+    installModeLoaded ? installMode : "vibe",
+    acfsRefLoaded ? acfsRef : null,
+    effectiveSSHUsername,
+  );
+  const promptPrefix = `${effectiveSSHUsername}@`;
 
   // Analytics tracking for this wizard step
   const { markComplete } = useWizardAnalytics({
@@ -92,10 +143,19 @@ export default function StatusCheckPage() {
   });
 
   const handleContinue = useCallback(() => {
+    const result = validateStep(12);
+    if (!result.valid) {
+      return;
+    }
+
     markComplete();
     markStepComplete(12);
     setIsNavigating(true);
-    router.push(withCurrentSearch("/wizard/launch-onboarding"));
+    router.push(
+      withCurrentSearch(
+        `/wizard/launch-onboarding?handoff=${LAUNCH_ONBOARDING_HANDOFF}`
+      )
+    );
   }, [router, markComplete]);
 
   // Compute auth services once, not on every category iteration
@@ -132,9 +192,14 @@ export default function StatusCheckPage() {
           <p className="text-sm">
             If you&apos;re in PowerShell or Terminal on your laptop, first run your SSH command:
           </p>
-          <CommandCard command="ssh -i ~/.ssh/acfs_ed25519 ubuntu@YOUR_VPS_IP" runLocation="local" className="mt-1" />
+          <CommandCard
+            command={reconnectCommand}
+            windowsCommand={reconnectWindowsCommand}
+            runLocation="local"
+            className="mt-1"
+          />
           <p className="text-sm text-muted-foreground">
-            Once you see <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">ubuntu@</code> in your prompt, you&apos;re ready.
+            Once you see <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">{promptPrefix}</code> in your prompt, you&apos;re ready.
           </p>
         </div>
       </AlertCard>
@@ -229,15 +294,14 @@ export default function StatusCheckPage() {
               Your VPS doesn&apos;t have a web browser, so authentication works differently:
             </p>
             <ol className="list-decimal list-inside space-y-1 text-sm">
-              <li>Run a login command below (like <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">claude</code>)</li>
-              <li>The terminal will display a URL and possibly a code</li>
-              <li><strong>Copy that URL and open it in your laptop&apos;s browser</strong></li>
-              <li>Complete the login in your browser</li>
-              <li>Return to your terminal — it should confirm success</li>
+              <li>Run a login or auth command below (for example <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">claude</code>)</li>
+              <li>Agent CLIs usually print a URL or device code; cloud CLIs may instead ask for an access token</li>
+              <li><strong>Complete the browser step on your laptop</strong> or create the token there if needed</li>
+              <li>Return to your terminal and finish the prompt or export the token in your shell</li>
             </ol>
             <p className="mt-2 text-xs text-muted-foreground">
-              If you see &quot;Opening browser...&quot; but nothing happens, that&apos;s normal!
-              Just copy the URL shown and open it manually on your laptop.
+              If you see &quot;Opening browser...&quot; but nothing happens, that&apos;s normal.
+              Open the URL manually on your laptop, or use the token-based alternative described below.
             </p>
           </div>
         </AlertCard>
@@ -258,10 +322,16 @@ export default function StatusCheckPage() {
             </ol>
             <p className="text-sm font-medium mt-2">Option 2: SSH Tunnel</p>
             <ol className="list-decimal list-inside space-y-1 text-sm pl-2">
-              <li>On your laptop: <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">ssh -L 1455:localhost:1455 ubuntu@YOUR_VPS_IP</code></li>
+              <li>On your laptop, open the SSH tunnel shown below</li>
               <li>In that SSH session (on VPS): <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">codex login</code></li>
               <li>The OAuth redirect will reach your VPS through the tunnel</li>
             </ol>
+            <CommandCard
+              command={codexTunnelCommand}
+              windowsCommand={codexTunnelWindowsCommand}
+              runLocation="local"
+              className="mt-1"
+            />
           </div>
         </AlertCard>
 
@@ -290,7 +360,9 @@ export default function StatusCheckPage() {
         <AlertCard variant="warning" icon={AlertCircle} title="Supabase & Vercel: Headless VPS Setup">
           <div className="space-y-2">
             <p>
-              These CLIs also use browser-based OAuth. For headless VPS, use access tokens instead.
+              Supabase works best with an access token on a VPS. Vercel CLI now supports
+              a device-login flow directly from a headless terminal, so you usually do not
+              need a manual token just to sign in.
             </p>
             <div className="text-sm space-y-2">
               <p className="font-medium">Supabase:</p>
@@ -302,8 +374,9 @@ export default function StatusCheckPage() {
 
               <p className="font-medium mt-2">Vercel:</p>
               <ol className="list-decimal list-inside space-y-1 pl-2 text-sm">
-                <li>Go to <a href="https://vercel.com/account/tokens" target="_blank" rel="noopener noreferrer" className="text-primary underline">Vercel → Tokens</a></li>
-                <li>Create a token, then use with commands: <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">vercel --token YOUR_TOKEN</code></li>
+                <li>Run <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">vercel login</code> on the VPS</li>
+                <li>Open the device-login URL on your laptop and approve the prompt</li>
+                <li>If you need automation or CI auth, export <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">VERCEL_TOKEN</code> instead of using the interactive flow</li>
               </ol>
             </div>
           </div>
@@ -346,7 +419,7 @@ export default function StatusCheckPage() {
                   <CommandCard
                     key={service.id}
                     command={service.postInstallCommand!}
-                    description={`Log in to ${service.name}`}
+                    description={getAuthCommandDescription(service)}
                     runLocation="vps"
                     showCheckbox
                     persistKey={`auth-${service.id}`}
@@ -382,7 +455,7 @@ export default function StatusCheckPage() {
             <div className="space-y-4">
               <GuideStep number={1} title="Make sure you're connected to your VPS">
                 Your terminal should show{" "}
-                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">ubuntu@</code>
+                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">{promptPrefix}</code>
                 at the beginning of your prompt. If it shows your laptop&apos;s name,
                 you need to SSH in first!
               </GuideStep>
@@ -466,14 +539,14 @@ export default function StatusCheckPage() {
                 <p className="text-sm text-muted-foreground">
                   You can try re-running the installer. It&apos;s safe to run multiple times:
                 </p>
-                <CommandCard command='curl -fsSL "https://raw.githubusercontent.com/Dicklesworthstone/agentic_coding_flywheel_setup/main/install.sh" | bash -s -- --yes --mode vibe' runLocation="vps" className="mt-1" />
+                <CommandCard command={reinstallCommand} runLocation="vps" className="mt-1" />
               </div>
 
               <div>
                 <p className="font-medium">Nothing works at all</p>
                 <p className="text-sm text-muted-foreground">
-                  Make sure you&apos;re connected as the &quot;ubuntu&quot; user (not root).
-                  The installer set up tools for the ubuntu user specifically.
+                  Make sure you&apos;re connected as the <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">{effectiveSSHUsername}</code> user (not root).
+                  The installer set up tools for that configured account specifically.
                 </p>
               </div>
             </div>
@@ -482,18 +555,22 @@ export default function StatusCheckPage() {
           <GuideSection title="Authenticating Your Services">
             <p className="mb-3">
               The services you signed up for need to be connected to your VPS.
-              Each command displays a URL to open in your laptop&apos;s browser:
+              Some tools open a browser flow on your laptop, while others use
+              device-code auth or access tokens that work cleanly on a headless VPS.
             </p>
             <div className="space-y-4">
               <GuideStep number={1} title="Run the login command">
                 Copy and run a command like{" "}
                 <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">claude</code> or{" "}
-                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">vercel login</code>.
+                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">codex login --device-auth</code>.
               </GuideStep>
 
-              <GuideStep number={2} title="Complete browser login">
-                A URL will appear in your terminal. Open it in your browser and
-                sign in with the account you created earlier.
+              <GuideStep number={2} title="Finish the matching auth flow">
+                Follow the instructions for that specific tool. You might open a
+                URL in your laptop&apos;s browser, complete a device-code flow, or
+                add a token such as <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">GEMINI_API_KEY</code>,{" "}
+                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">SUPABASE_ACCESS_TOKEN</code>, or{" "}
+                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">CLOUDFLARE_API_TOKEN</code>.
               </GuideStep>
 
               <GuideStep number={3} title="Return to terminal">
@@ -542,10 +619,22 @@ export default function StatusCheckPage() {
       </SimplerGuide>
 
       {/* Continue button */}
-      <div className="flex justify-end pt-4">
-        <Button onClick={handleContinue} disabled={isNavigating} size="lg" disableMotion>
-          {isNavigating ? "Loading..." : "Everything looks good!"}
-        </Button>
+      <div className="space-y-2 pt-4">
+        {!doctorConfirmed && (
+          <p className="text-sm text-muted-foreground">
+            Check off the doctor command above to unlock the final step.
+          </p>
+        )}
+        <div className="flex justify-end">
+          <Button
+            onClick={handleContinue}
+            disabled={isNavigating || !doctorConfirmed}
+            size="lg"
+            disableMotion
+          >
+            {isNavigating ? "Loading..." : "Everything looks good!"}
+          </Button>
+        </div>
       </div>
     </div>
   );

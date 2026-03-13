@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { WIZARD_STEPS, type ValidationResult } from "../wizardSteps";
+import { validateStep, type ValidationResult } from "../wizardSteps";
 
 const VALID: ValidationResult = { valid: true, errors: [] };
 const ERROR_DISPLAY_MS = 4000;
@@ -42,35 +42,30 @@ export function useStepValidation() {
 
   const validate = useCallback(
     (stepId: number): ValidationResult => {
-      const step = WIZARD_STEPS.find((s) => s.id === stepId);
-      if (!step?.validate) {
+      const result = validateStep(stepId);
+
+      if (result.valid) {
         clearErrors();
         return VALID;
       }
 
-      const result = step.validate();
+      cancelPendingClear();
+      setValidationErrors(result.errors);
 
-      if (!result.valid) {
-        cancelPendingClear();
-        setValidationErrors(result.errors);
+      // Auto-dismiss after timeout. Cancel any older timer first so stale
+      // timeouts cannot clear a newer validation error.
+      clearTimerRef.current = setTimeout(() => {
+        clearTimerRef.current = null;
+        setValidationErrors([]);
+      }, ERROR_DISPLAY_MS);
 
-        // Auto-dismiss after timeout. Cancel any older timer first so stale
-        // timeouts cannot clear a newer validation error.
-        clearTimerRef.current = setTimeout(() => {
-          clearTimerRef.current = null;
-          setValidationErrors([]);
-        }, ERROR_DISPLAY_MS);
-
-        // Scroll to and focus the relevant element
-        if (result.focusSelector) {
-          const el = document.querySelector(result.focusSelector);
-          if (el) {
-            el.scrollIntoView({ behavior: "smooth", block: "center" });
-            if (el instanceof HTMLElement) el.focus();
-          }
+      // Scroll to and focus the relevant element
+      if (result.focusSelector) {
+        const el = document.querySelector(result.focusSelector);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          if (el instanceof HTMLElement) el.focus();
         }
-      } else {
-        clearErrors();
       }
 
       return result;

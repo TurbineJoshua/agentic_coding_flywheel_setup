@@ -9,7 +9,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect } from "react";
-import { safeGetJSON, safeSetJSON } from "./utils";
+import { safeGetJSON, safeGetItem, safeSetJSON } from "./utils";
 import { getUserOS, getVPSIP, detectOS, setUserOS } from "./userPreferences";
 
 export interface ValidationResult {
@@ -56,6 +56,38 @@ function validateVPSCreation(): ValidationResult {
         valid: false,
         errors: ["Enter your VPS IP address to continue"],
         focusSelector: "[data-vps-ip-input]",
+    };
+}
+
+const COMMAND_COMPLETION_KEY_PREFIX = "acfs-command-";
+
+function isCommandMarkedComplete(persistKey: string): boolean {
+  if (safeGetItem(`${COMMAND_COMPLETION_KEY_PREFIX}${persistKey}`) === "true") {
+    return true;
+  }
+
+  if (typeof document === "undefined") {
+    return false;
+  }
+
+  const checkbox = document.getElementById(persistKey);
+  if (!checkbox) {
+    return false;
+  }
+
+  return (
+    checkbox.getAttribute("data-state") === "checked" ||
+    (checkbox instanceof HTMLInputElement && checkbox.checked)
+  );
+}
+
+function validateStatusCheck(): ValidationResult {
+  return isCommandMarkedComplete("flywheel-doctor")
+    ? { valid: true, errors: [] }
+    : {
+        valid: false,
+        errors: ["Run the doctor command and mark it complete before continuing"],
+        focusSelector: "#flywheel-doctor",
       };
 }
 
@@ -133,6 +165,7 @@ export const WIZARD_STEPS: WizardStep[] = [
     title: "Status Check",
     description: "Verify everything installed correctly",
     slug: "status-check",
+    validate: validateStatusCheck,
   },
   {
     id: 13,
@@ -157,6 +190,15 @@ export function getStepBySlug(slug: string): WizardStep | undefined {
   const canonicalSlug =
     slug === "windows-terminal-setup" ? "verify-key-connection" : slug;
   return WIZARD_STEPS.find((step) => step.slug === canonicalSlug);
+}
+
+export function validateStep(stepId: number): ValidationResult {
+  const step = getStepById(stepId);
+  if (!step?.validate) {
+    return { valid: true, errors: [] };
+  }
+
+  return step.validate();
 }
 
 /** localStorage key for storing completed steps */
@@ -319,11 +361,12 @@ export function useCompletedSteps(): [number[], (stepId: number) => void] {
     },
   });
 
+  const { mutate } = mutation;
   const markComplete = useCallback(
     (stepId: number) => {
-      mutation.mutate(stepId);
+      mutate(stepId);
     },
-    [mutation]
+    [mutate]
   );
 
   return [steps ?? [], markComplete];

@@ -7,9 +7,10 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { CommandCard } from "@/components/command-card";
 import { AlertCard, OutputPreview } from "@/components/alert-card";
+import { formatSshTarget } from "@/lib/commandBuilder";
 import { markStepComplete } from "@/lib/wizardSteps";
 import { useWizardAnalytics } from "@/lib/hooks/useWizardAnalytics";
-import { useVPSIP } from "@/lib/userPreferences";
+import { useSSHUsername, useVPSIP } from "@/lib/userPreferences";
 import { withCurrentSearch } from "@/lib/utils";
 import {
   SimplerGuide,
@@ -24,8 +25,9 @@ import { Jargon } from "@/components/jargon";
 export default function VerifyKeyConnectionPage() {
   const router = useRouter();
   const [vpsIP, , vpsIPLoaded] = useVPSIP();
+  const [sshUsername, , sshUsernameLoaded] = useSSHUsername();
   const [isNavigating, setIsNavigating] = useState(false);
-  const ready = vpsIPLoaded;
+  const ready = vpsIPLoaded && sshUsernameLoaded;
 
   // Analytics tracking for this wizard step
   const { markComplete } = useWizardAnalytics({
@@ -57,8 +59,11 @@ export default function VerifyKeyConnectionPage() {
     );
   }
 
-  const sshKeyCommand = `ssh -i ~/.ssh/acfs_ed25519 ubuntu@${vpsIP}`;
-  const sshKeyCommandWindows = `ssh -i $HOME\\.ssh\\acfs_ed25519 ubuntu@${vpsIP}`;
+  const effectiveUsername = sshUsername.trim() || "ubuntu";
+  const userTarget = formatSshTarget(effectiveUsername, vpsIP);
+  const userPrompt = `${effectiveUsername}@`;
+  const sshKeyCommand = `ssh -i ~/.ssh/acfs_ed25519 ${userTarget}`;
+  const sshKeyCommandWindows = `ssh -i $HOME\\.ssh\\acfs_ed25519 ${userTarget}`;
 
   return (
     <div className="space-y-8">
@@ -115,14 +120,14 @@ export default function VerifyKeyConnectionPage() {
       <OutputPreview title="Success looks like:">
         <div className="space-y-2 text-sm">
           <p className="text-[oklch(0.72_0.19_145)]">• You were not asked for a password</p>
-          <p className="text-[oklch(0.72_0.19_145)]">• Your prompt shows: ubuntu@vps:~$</p>
+          <p className="text-[oklch(0.72_0.19_145)]">• Your prompt shows: {userPrompt}vps:~$</p>
         </div>
       </OutputPreview>
 
       {/* Windows Terminal tip */}
       <div className="rounded-xl border border-[oklch(0.75_0.18_195/0.3)] bg-[oklch(0.75_0.18_195/0.08)] p-4">
         <Link
-          href={withCurrentSearch("/wizard/windows-terminal-setup")}
+          href={withCurrentSearch("/wizard/windows-terminal-setup?from=verify-key-connection")}
           className="flex items-start gap-3"
         >
           <Terminal className="mt-0.5 h-5 w-5 text-[oklch(0.75_0.18_195)]" />
@@ -178,7 +183,7 @@ export default function VerifyKeyConnectionPage() {
               </GuideStep>
 
               <GuideStep number={3} title="Confirm the prompt">
-                Look for <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">ubuntu@</code> and a
+                Look for <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{userPrompt}</code> and a
                 <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">$</code> at the end.
               </GuideStep>
             </div>
