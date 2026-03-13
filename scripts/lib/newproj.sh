@@ -612,6 +612,14 @@ main() {
         project_dir="/data/projects/$project_name"
     fi
 
+    if declare -f normalize_path &>/dev/null; then
+        local resolved_project_dir=""
+        resolved_project_dir=$(normalize_path "$project_dir") || true
+        if [[ -n "$resolved_project_dir" ]]; then
+            project_dir="$resolved_project_dir"
+        fi
+    fi
+
     # Match the wizard flow: allow only a brand-new path or an existing empty directory.
     if [[ -e "$project_dir" ]]; then
         if [[ ! -d "$project_dir" ]]; then
@@ -619,13 +627,41 @@ main() {
             exit 1
         fi
 
-        if [[ -n "$(ls -A "$project_dir" 2>/dev/null)" ]]; then
+        if [[ ! -r "$project_dir" || ! -x "$project_dir" ]]; then
+            echo -e "${RED}Error: Cannot inspect existing directory: $project_dir${NC}" >&2
+            exit 1
+        fi
+
+        if [[ ! -w "$project_dir" ]]; then
+            echo -e "${RED}Error: Cannot write to existing directory: $project_dir${NC}" >&2
+            exit 1
+        fi
+
+        local first_entry=""
+        first_entry=$(find "$project_dir" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null) || {
+            echo -e "${RED}Error: Cannot inspect existing directory: $project_dir${NC}" >&2
+            exit 1
+        }
+
+        if [[ -n "$first_entry" ]]; then
             echo -e "${RED}Error: Directory already exists and is not empty: $project_dir${NC}" >&2
             echo -e "${YELLOW}Choose a new directory or move the existing contents first${NC}" >&2
             exit 1
         fi
 
         echo -e "${YELLOW}Warning: Directory $project_dir already exists but is empty${NC}"
+    else
+        local parent_dir=""
+        parent_dir=$(dirname "$project_dir")
+        if [[ ! -d "$parent_dir" ]]; then
+            echo -e "${RED}Error: Parent directory does not exist: $parent_dir${NC}" >&2
+            exit 1
+        fi
+
+        if [[ ! -w "$parent_dir" || ! -x "$parent_dir" ]]; then
+            echo -e "${RED}Error: Cannot create entries in parent directory: $parent_dir${NC}" >&2
+            exit 1
+        fi
     fi
 
     echo -e "${CYAN}Creating project: $project_name${NC}"

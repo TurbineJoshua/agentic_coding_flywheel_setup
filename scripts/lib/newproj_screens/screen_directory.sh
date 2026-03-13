@@ -130,9 +130,9 @@ check_directory_status() {
         return 2
     fi
 
-    # Check parent is writable
-    if [[ ! -w "$parent" ]]; then
-        echo "ERROR:Cannot write to parent directory: $parent"
+    # Check parent is writable and searchable for creation.
+    if [[ ! -w "$parent" || ! -x "$parent" ]]; then
+        echo "ERROR:Cannot create entries in parent directory: $parent"
         return 2
     fi
 

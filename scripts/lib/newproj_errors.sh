@@ -364,7 +364,7 @@ preflight_check() {
 # Returns: 0 on success, 1 on failure
 try_create_directory() {
     local dir="$1"
-    local existing_entries=""
+    local first_entry=""
 
     log_debug "Creating directory: $dir" 2>/dev/null || true
 
@@ -376,14 +376,25 @@ try_create_directory() {
             return 1
         fi
 
+        if [[ ! -r "$dir" || ! -x "$dir" ]]; then
+            log_error "Cannot inspect existing directory: $dir" 2>/dev/null || true
+            show_error_with_recovery "permission" "Cannot inspect existing directory: $dir"
+            return 1
+        fi
+
         if [[ ! -w "$dir" ]]; then
             log_error "No write permission to directory: $dir" 2>/dev/null || true
             show_error_with_recovery "permission" "No write permission to: $dir"
             return 1
         fi
 
-        existing_entries="$(ls -A "$dir" 2>/dev/null || true)"
-        if [[ -n "$existing_entries" ]]; then
+        first_entry=$(find "$dir" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null) || {
+            log_error "Cannot inspect existing directory: $dir" 2>/dev/null || true
+            show_error_with_recovery "permission" "Cannot inspect existing directory: $dir"
+            return 1
+        }
+
+        if [[ -n "$first_entry" ]]; then
             log_error "Directory already exists and is not empty: $dir" 2>/dev/null || true
             show_error_with_recovery "exists" "Directory already exists and is not empty: $dir"
             return 1
@@ -393,7 +404,7 @@ try_create_directory() {
         return 0
     fi
 
-    # Check parent directory exists and is writable
+    # Check parent directory exists and is usable for creation.
     local parent_dir
     parent_dir=$(dirname "$dir")
     if [[ ! -d "$parent_dir" ]]; then
@@ -402,9 +413,9 @@ try_create_directory() {
         return 1
     fi
 
-    if [[ ! -w "$parent_dir" ]]; then
-        log_error "No write permission to parent directory: $parent_dir" 2>/dev/null || true
-        show_error_with_recovery "permission" "No write permission to: $parent_dir"
+    if [[ ! -w "$parent_dir" || ! -x "$parent_dir" ]]; then
+        log_error "Cannot create entries in parent directory: $parent_dir" 2>/dev/null || true
+        show_error_with_recovery "permission" "Cannot create entries in parent directory: $parent_dir"
         return 1
     fi
 
@@ -797,9 +808,11 @@ validate_directory() {
     parent_dir=$(dirname "$expanded_dir")
     if [[ ! -d "$parent_dir" ]]; then
         error_msg="Parent directory does not exist: $parent_dir"
-    # Check parent is writable
+    # Check parent is writable and searchable for creation.
     elif [[ ! -w "$parent_dir" ]]; then
         error_msg="No write permission to: $parent_dir"
+    elif [[ ! -x "$parent_dir" ]]; then
+        error_msg="Cannot create entries in parent directory: $parent_dir"
     # Check if target already exists
     elif [[ -e "$expanded_dir" ]]; then
         error_msg="Path already exists: $expanded_dir"

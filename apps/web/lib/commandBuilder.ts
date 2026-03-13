@@ -32,13 +32,12 @@ export interface GeneratedCommand {
 }
 
 function sshKeyPath(os: OperatingSystem): string {
-  return os === "windows"
-    ? "$HOME\\.ssh\\acfs_ed25519"
-    : "~/.ssh/acfs_ed25519";
+  // Modern OpenSSH for Windows (standard in Win10+) supports ~/.ssh/
+  return "~/.ssh/acfs_ed25519";
 }
 
 function sshKeyPathWindows(): string {
-  return "$HOME\\.ssh\\acfs_ed25519";
+  return "~/.ssh/acfs_ed25519";
 }
 
 export function formatSshHost(host: string): string {
@@ -101,6 +100,7 @@ export function buildCommands(inputs: CommandBuilderInputs): GeneratedCommand[] 
     label: "SSH as root",
     description: "First-time connection with your VPS password",
     command: `ssh ${rootTarget}`,
+    windowsCommand: `ssh ${rootTarget}`,
     runLocation: "local",
   });
 

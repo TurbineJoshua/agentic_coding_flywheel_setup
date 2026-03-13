@@ -286,6 +286,22 @@ teardown() {
     [[ "$status" == "ERROR:Cannot write to existing directory:"* ]]
 }
 
+@test "check_directory_status rejects parent directory without search access" {
+    source_lib "newproj_screens"
+    load_screens
+
+    local parent_dir="$TEST_DIR/no-search-parent"
+    mkdir -p "$parent_dir"
+    chmod 200 "$parent_dir"
+
+    local status
+    status=$(check_directory_status "$parent_dir/project") || true
+
+    chmod 700 "$parent_dir"
+
+    [[ "$status" == "ERROR:Cannot create entries in parent directory:"* ]]
+}
+
 @test "check_directory_status expands tilde" {
     source_lib "newproj_screens"
     load_screens

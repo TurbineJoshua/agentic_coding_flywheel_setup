@@ -107,6 +107,20 @@ teardown() {
     assert_success
 }
 
+@test "try_create_directory fails for an existing directory it cannot inspect" {
+    local existing_dir="$TEST_DIR/existing-no-search"
+    mkdir "$existing_dir"
+    chmod 600 "$existing_dir"
+
+    run try_create_directory "$existing_dir"
+    local status="$status"
+
+    chmod 700 "$existing_dir"
+
+    [[ "$status" -ne 0 ]]
+    [[ "$output" == *"Cannot inspect existing directory"* ]]
+}
+
 @test "try_create_directory fails for an existing non-empty directory" {
     local existing_dir="$TEST_DIR/existing-non-empty"
     mkdir "$existing_dir"
@@ -135,6 +149,21 @@ teardown() {
     assert_failure
 
     [[ "$output" == *"does not exist"* ]]
+}
+
+@test "try_create_directory fails if parent directory is not searchable" {
+    local parent_dir="$TEST_DIR/no-search-parent"
+    local child_dir="$parent_dir/project"
+    mkdir "$parent_dir"
+    chmod 200 "$parent_dir"
+
+    run try_create_directory "$child_dir"
+    local status="$status"
+
+    chmod 700 "$parent_dir"
+
+    [[ "$status" -ne 0 ]]
+    [[ "$output" == *"Cannot create entries in parent directory"* ]]
 }
 
 @test "try_create_directory registers for cleanup" {

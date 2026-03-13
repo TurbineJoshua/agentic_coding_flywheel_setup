@@ -54,7 +54,6 @@ if ! declare -f acfs_log_init >/dev/null 2>&1; then
             # Test if process substitution works before committing to it.
             # On bash 5.3+, bare `exec` under set -e can exit the script
             # before `if` catches the failure, so we test in a subshell.
-            # shellcheck disable=SC2261
             if (exec 3>&1; echo test > >(cat >/dev/null)) 2>/dev/null; then
                 exec 3>&2 || true
                 # shellcheck disable=SC2261
@@ -308,31 +307,15 @@ if ! declare -f show_progress_header >/dev/null; then
         # Print progress header (box is 65 chars wide, content is 63 chars)
         echo "" >&2
         echo "╔═══════════════════════════════════════════════════════════════╗" >&2
-        # Progress line: "  Progress: [bar] 100%  (9/9)                 "
-        # We need to ensure the right padding adapts to the length of (current/total).
-        # Fixed width for the progress text part: 20 (bar) + 6 (percent) + variable (counts)
-        # Using printf * after the bar to pad the rest of the line.
         
-        # Construct the progress detail string first: " 100%  (9/9)"
+        # Construct the progress detail string: " 100%  (9/9)"
         local prog_detail
         printf -v prog_detail " %3d%%  (%d/%d)" "$percent" "$current" "$total"
         
-        # Calculate padding needed to fill the rest of the 63-char content area minus "  Progress: [" and "]"
-        # "  Progress: [" is 13 chars. "]" is 1 char. Total 14 chars.
-        # Bar is 20 chars.
-        # 63 - 14 - 20 = 29 chars remaining for prog_detail + padding.
-        local detail_len=${#prog_detail}
-        local pad_len=$((29 - detail_len))
+        # Final progress line: "  Progress: [bar] 100%  (9/9)                 "
+        # "  Progress: [" (13) + bar (20) + "]" (1) + prog_detail + padding + " ║"
+        local visible_len=$((14 + 20 + ${#prog_detail}))
         local padding=""
-        if [[ $pad_len -gt 0 ]]; then
-            padding=$(printf "%${pad_len}s" "")
-        fi
-
-        # Final progress line
-        local prog_detail=" ${percent}%"
-        padding=""
-        # Adjust padding based on visible length
-        local visible_len=$((13 + 20 + ${#prog_detail}))
         if [[ $visible_len -lt 62 ]]; then
             padding=$(printf '%*s' $((62 - visible_len)) "")
         fi

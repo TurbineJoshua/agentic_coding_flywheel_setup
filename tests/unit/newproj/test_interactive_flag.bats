@@ -301,6 +301,41 @@ teardown() {
     [[ "$output" == *"not empty"* ]]
 }
 
+@test "main CLI rejects an existing empty directory it cannot inspect" {
+    local project_dir="$TEST_DIR/cli-uninspectable-project"
+    mkdir -p "$project_dir"
+    chmod 600 "$project_dir"
+
+    run bash -c '
+        source '"$ACFS_LIB_DIR"'/newproj.sh
+        main myproj "'"$project_dir"'" 2>&1
+    '
+    local cmd_status="$status"
+
+    chmod 700 "$project_dir"
+
+    [[ "$cmd_status" -ne 0 ]]
+    [[ "$output" == *"Cannot inspect existing directory"* ]]
+}
+
+@test "main CLI rejects a target under a parent directory without search access" {
+    local parent_dir="$TEST_DIR/cli-no-search-parent"
+    local project_dir="$parent_dir/myproj"
+    mkdir -p "$parent_dir"
+    chmod 200 "$parent_dir"
+
+    run bash -c '
+        source '"$ACFS_LIB_DIR"'/newproj.sh
+        main myproj "'"$project_dir"'" 2>&1
+    '
+    local cmd_status="$status"
+
+    chmod 700 "$parent_dir"
+
+    [[ "$cmd_status" -ne 0 ]]
+    [[ "$output" == *"Cannot create entries in parent directory"* ]]
+}
+
 @test "main CLI creates local Claude settings and gitignores them" {
     local project_dir="$TEST_DIR/cli-claude-project"
 

@@ -133,13 +133,18 @@ detect_target_user() {
     fi
 
     # 3) Scan for an installed state file under /home/*
+    local nullglob_was_set=0
+    if shopt -q nullglob; then nullglob_was_set=1; fi
+    shopt -s nullglob
     for state_candidate in /home/*/.acfs/state.json; do
         candidate_user="$(read_target_user_from_state_file "$state_candidate" 2>/dev/null || true)"
         if [[ -n "$candidate_user" ]] && find_acfs_bin "$candidate_user" >/dev/null 2>&1; then
+            if (( ! nullglob_was_set )); then shopt -u nullglob; fi
             printf '%s\n' "$candidate_user"
             return 0
         fi
     done
+    if (( ! nullglob_was_set )); then shopt -u nullglob; fi
 
     # 4) Upgrade/resume state file (root-owned, may remain after upgrades)
     candidate_user="$(read_target_user_from_state_file "/var/lib/acfs/state.json" 2>/dev/null || true)"
@@ -178,9 +183,11 @@ main() {
         # Try to help the user identify other installs (common cases: installed under a different /home user).
         local -a candidates=()
         local candidate candidate_user
+        local nullglob_was_set_main=0
+        if shopt -q nullglob; then nullglob_was_set_main=1; fi
         shopt -s nullglob
         candidates=(/home/*/.local/bin/acfs /home/*/.acfs/bin/acfs /root/.local/bin/acfs /root/.acfs/bin/acfs)
-        shopt -u nullglob
+        if (( ! nullglob_was_set_main )); then shopt -u nullglob; fi
 
         if (( ${#candidates[@]} > 0 )); then
             echo "" >&2
