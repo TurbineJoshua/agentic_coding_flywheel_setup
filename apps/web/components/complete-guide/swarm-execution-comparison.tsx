@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useInView, useReducedMotion } from "framer-motion";
+import { motion, useInView, useReducedMotion, AnimatePresence } from "framer-motion";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -165,7 +165,7 @@ const SCENARIOS: Record<ScenarioId, ScenarioDefinition> = {
   },
   staggered: {
     title: "Staggered Start",
-    accent: "#34d399",
+    accent: "#52525B",
     badge: "Frontier-friendly",
     summary: "Agents enter a few beats apart, so each arrival sees a different clean frontier.",
     frames: [
