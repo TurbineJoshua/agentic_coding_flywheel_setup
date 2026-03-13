@@ -711,7 +711,7 @@ function RelevanceGauge({
           <motion.path
             d="M 8 55 A 42 42 0 0 1 92 55"
             fill="none"
-            stroke="url(#gaugeGradient)"
+            stroke="url(#fsfs-gaugeGradient)"
             strokeWidth="6"
             strokeLinecap="round"
             initial={{ pathLength: 0 }}
@@ -724,7 +724,7 @@ function RelevanceGauge({
             }}
           />
           <defs>
-            <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <linearGradient id="fsfs-gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="rgb(168,85,247)" />
               <stop offset="50%" stopColor="rgb(6,182,212)" />
               <stop offset="100%" stopColor="rgb(245,158,11)" />

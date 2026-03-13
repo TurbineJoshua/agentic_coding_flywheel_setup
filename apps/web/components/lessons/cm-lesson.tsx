@@ -457,7 +457,11 @@ function InteractiveMemoryPipeline() {
   const [glowingRules, setGlowingRules] = useState<Set<string>>(new Set());
   const autoPlayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const clearAutoPlayTimer = useCallback(() => {
+  const autoPlayTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const clearAutoPlayTimers = useCallback(() => {
+    for (const t of autoPlayTimersRef.current) clearTimeout(t);
+    autoPlayTimersRef.current = [];
     if (autoPlayTimerRef.current) {
       clearTimeout(autoPlayTimerRef.current);
       autoPlayTimerRef.current = null;
@@ -467,39 +471,47 @@ function InteractiveMemoryPipeline() {
   // Auto-play demo flow
   useEffect(() => {
     if (!isAutoPlaying) {
-      clearAutoPlayTimer();
+      clearAutoPlayTimers();
       return;
     }
+    clearAutoPlayTimers();
+
+    const schedule = (fn: () => void, delay: number) => {
+      const t = setTimeout(fn, delay);
+      autoPlayTimersRef.current.push(t);
+      autoPlayTimerRef.current = t;
+      return t;
+    };
 
     // Step 1: Select a session
-    autoPlayTimerRef.current = setTimeout(() => {
+    schedule(() => {
       setSelectedSession("s1");
       setFeedingSession("s1");
 
       // Step 2: Processing stages
-      autoPlayTimerRef.current = setTimeout(() => {
+      schedule(() => {
         setProcessingStage(0);
-        autoPlayTimerRef.current = setTimeout(() => {
+        schedule(() => {
           setProcessingStage(1);
-          autoPlayTimerRef.current = setTimeout(() => {
+          schedule(() => {
             setProcessingStage(2);
-            autoPlayTimerRef.current = setTimeout(() => {
+            schedule(() => {
               setProcessingStage(3);
 
               // Step 3: Rule appears with glow
-              autoPlayTimerRef.current = setTimeout(() => {
+              schedule(() => {
                 setFeedingSession(null);
                 setGlowingRules(new Set(["r5"]));
                 setProcessingStage(-1);
 
                 // Step 4: Query demonstration
-                autoPlayTimerRef.current = setTimeout(() => {
+                schedule(() => {
                   setSelectedSession(null);
                   setActiveQuery(QUERY_EXAMPLES[0]);
                   setGlowingRules(new Set());
 
                   // Step 5: Reset
-                  autoPlayTimerRef.current = setTimeout(() => {
+                  schedule(() => {
                     setActiveQuery(null);
                     setIsAutoPlaying(false);
                   }, 3000);
@@ -511,8 +523,8 @@ function InteractiveMemoryPipeline() {
       }, 1200);
     }, 600);
 
-    return clearAutoPlayTimer;
-  }, [isAutoPlaying, clearAutoPlayTimer]);
+    return clearAutoPlayTimers;
+  }, [isAutoPlaying, clearAutoPlayTimers]);
 
   const handleSessionClick = useCallback((sessionId: string) => {
     if (isAutoPlaying) return;
@@ -529,7 +541,7 @@ function InteractiveMemoryPipeline() {
 
   const toggleAutoPlay = useCallback(() => {
     if (isAutoPlaying) {
-      clearAutoPlayTimer();
+      clearAutoPlayTimers();
       setIsAutoPlaying(false);
       setSelectedSession(null);
       setFeedingSession(null);
@@ -538,8 +550,13 @@ function InteractiveMemoryPipeline() {
       setActiveQuery(null);
     } else {
       setIsAutoPlaying(true);
+      if (SESSION_DATA.some((s) => !s.learned)) {
+        // We do not have a learnedSessions set in this context;
+        // but since we only need to kick off the auto-play sequence, 
+        // we can just let the auto-play loop handle it.
+      }
     }
-  }, [isAutoPlaying, clearAutoPlayTimer]);
+  }, [isAutoPlaying, clearAutoPlayTimers]);
 
   const highlightedRuleIds = activeQuery
     ? new Set(activeQuery.matchingRules)

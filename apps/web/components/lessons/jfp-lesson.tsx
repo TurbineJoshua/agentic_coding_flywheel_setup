@@ -1070,18 +1070,19 @@ function AgentTerminalTab() {
     const delay = line?.type === 'command' ? 600 : line?.type === 'progress' ? 800 : line?.type === 'agent' ? 300 : 150;
 
     timerRef.current = setTimeout(() => {
-      setVisibleLines((prev) => {
-        const next = prev + 1;
-        if (next >= TERMINAL_LINES.length) {
-          setIsRunning(false);
-        }
-        return next;
-      });
+      setVisibleLines((prev) => prev + 1);
     }, delay);
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
+  }, [isRunning, visibleLines]);
+
+  // Stop running when all lines shown
+  useEffect(() => {
+    if (isRunning && visibleLines >= TERMINAL_LINES.length) {
+      setIsRunning(false);
+    }
   }, [isRunning, visibleLines]);
 
   useEffect(() => {

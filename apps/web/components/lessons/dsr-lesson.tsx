@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from '@/components/motion';
 import {
   Terminal,
@@ -1090,7 +1090,7 @@ function ChecksumVerification({
   const isVerified = phase !== 'idle' && phase !== 'building' && phase !== 'verifying';
 
   // Generate stable per-target hashes from the prefix
-  const [hashes] = useState(() =>
+  const hashes = useMemo(() =>
     targets.map((t, i) => {
       const seed = checksumPrefix + t.label + i;
       let hash = '';
@@ -1100,7 +1100,7 @@ function ChecksumVerification({
       }
       return hash;
     }),
-  );
+  [targets, checksumPrefix]);
 
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

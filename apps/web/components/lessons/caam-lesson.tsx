@@ -488,7 +488,9 @@ const SCENARIOS: Scenario[] = [
 // Sub-components
 // ---------------------------------------------------------------------------
 
+let sparkIdCounter = 0;
 function SparklineChart({ data, color, width = 80, height = 24 }: { data: number[]; color: string; width?: number; height?: number }) {
+  const [gradientId] = useState(() => `spark-${++sparkIdCounter}`);
   const points = data.map((v, i) => {
     const x = (i / (data.length - 1)) * width;
     const y = height - (v / 100) * height;
@@ -500,12 +502,12 @@ function SparklineChart({ data, color, width = 80, height = 24 }: { data: number
   return (
     <svg width={width} height={height} className="overflow-visible">
       <defs>
-        <linearGradient id={`spark-${color}`} x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity={0.3} />
           <stop offset="100%" stopColor={color} stopOpacity={0} />
         </linearGradient>
       </defs>
-      <polygon points={areaPoints} fill={`url(#spark-${color})`} />
+      <polygon points={areaPoints} fill={`url(#${gradientId})`} />
       <polyline points={points} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );

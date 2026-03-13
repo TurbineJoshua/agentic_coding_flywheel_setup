@@ -968,12 +968,18 @@ function InteractiveSwarmOrchestrator() {
     setStep((s) => {
       const next = s + 1;
       if (next >= SCENARIOS.length) {
-        setTimeout(() => setPlaying(false), 0);
-        return SCENARIOS.length - 1;
+        return s; // stay at last step, effect below will stop playing
       }
       return next;
     });
   }, []);
+
+  // Stop playing when at last step
+  useEffect(() => {
+    if (playing && step >= SCENARIOS.length - 1) {
+      setTimeout(() => setPlaying(false), 0);
+    }
+  }, [playing, step]);
 
   useEffect(() => {
     if (playing) {

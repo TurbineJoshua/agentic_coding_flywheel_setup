@@ -1091,6 +1091,122 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* The Flywheel Guide — Hero-Level CTA */}
+        <section className="relative overflow-hidden py-16 sm:py-24">
+          {/* Atmospheric glow */}
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute left-1/4 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.04] blur-[120px]" />
+            <div className="absolute right-1/4 top-1/2 h-[400px] w-[400px] translate-x-1/2 -translate-y-1/2 rounded-full bg-[oklch(0.7_0.2_330)]/[0.04] blur-[120px]" />
+          </div>
+
+          <div className="relative mx-auto max-w-4xl px-6">
+            <Link href="/complete-guide" className="group block">
+              <motion.div
+                className="relative overflow-hidden rounded-3xl border border-primary/20 p-px"
+                initial={{ opacity: 0, y: 30, scale: 0.98 }}
+                whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                viewport={{ once: true, margin: "-80px" }}
+                transition={springs.smooth}
+                whileHover={{ y: -4, scale: 1.005 }}
+                style={{
+                  boxShadow: "0 0 60px -12px oklch(0.75 0.18 195 / 0.15), 0 24px 48px -12px rgba(0,0,0,0.4)",
+                }}
+              >
+                {/* Animated border gradient — glows brighter on hover */}
+                <div
+                  className="absolute inset-0 rounded-3xl opacity-40 transition-opacity duration-500 group-hover:opacity-100"
+                  style={{
+                    background: "linear-gradient(135deg, oklch(0.75 0.18 195 / 0.5), oklch(0.7 0.2 330 / 0.3), oklch(0.75 0.18 195 / 0.5))",
+                    backgroundSize: "200% 200%",
+                    animation: "shimmer 4s linear infinite",
+                    padding: "1px",
+                    WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                    WebkitMaskComposite: "xor",
+                    maskComposite: "exclude",
+                  }}
+                />
+
+                {/* Inner card */}
+                <div className="relative rounded-[23px] bg-gradient-to-br from-card via-card/95 to-card px-8 py-10 sm:px-12 sm:py-14">
+                  {/* Top label */}
+                  <motion.div
+                    className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-primary"
+                    initial={{ opacity: 0, x: -10 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ ...springs.snappy, delay: 0.1 }}
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Featured Guide
+                  </motion.div>
+
+                  {/* Headline with gradient */}
+                  <motion.h3
+                    className="mb-4 text-2xl font-extrabold tracking-tight sm:text-3xl lg:text-4xl"
+                    style={{ letterSpacing: "-0.025em" }}
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ ...springs.smooth, delay: 0.15 }}
+                  >
+                    <span className="text-gradient-cosmic">The Flywheel Methodology</span>
+                  </motion.h3>
+
+                  <motion.p
+                    className="mb-8 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg"
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ ...springs.smooth, delay: 0.2 }}
+                  >
+                    The definitive guide to planning-first agentic development — decompose complex projects into beads,
+                    detect convergence, coordinate agent swarms, and ship 10&times; faster with the Flywheel approach.
+                  </motion.p>
+
+                  {/* Stats row */}
+                  <motion.div
+                    className="mb-8 flex flex-wrap gap-x-6 gap-y-3 text-sm"
+                    initial={{ opacity: 0 }}
+                    whileInView={{ opacity: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ ...springs.smooth, delay: 0.25 }}
+                  >
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Clock className="h-4 w-4 text-primary/60" />
+                      <span>25 in-depth sections</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Cpu className="h-4 w-4 text-primary/60" />
+                      <span>3 interactive visualizations</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Zap className="h-4 w-4 text-primary/60" />
+                      <span>Complete methodology</span>
+                    </div>
+                  </motion.div>
+
+                  {/* CTA button */}
+                  <motion.div
+                    className="inline-flex items-center gap-3 rounded-xl bg-primary px-7 py-3.5 text-base font-bold text-primary-foreground shadow-lg transition-all duration-300 group-hover:shadow-[0_0_40px_-8px_oklch(0.75_0.18_195/0.5)] group-hover:scale-[1.03]"
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ ...springs.snappy, delay: 0.3 }}
+                  >
+                    <BookOpen className="h-5 w-5" />
+                    Read the Flywheel Guide
+                    <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1.5" />
+                  </motion.div>
+                </div>
+
+                {/* Decorative gradient orbs */}
+                <div className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-primary/15 blur-3xl transition-opacity duration-500 group-hover:opacity-75" />
+                <div className="pointer-events-none absolute -bottom-20 -left-20 h-44 w-44 rounded-full bg-[oklch(0.7_0.2_330)]/15 blur-3xl transition-opacity duration-500 group-hover:opacity-75" />
+              </motion.div>
+            </Link>
+          </div>
+        </section>
+
         {/* Features Grid */}
         <FeaturesSection />
 

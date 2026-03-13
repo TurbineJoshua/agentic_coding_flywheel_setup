@@ -368,7 +368,14 @@ function VpsStateDiagram({
             key={agent.shortName}
             cx={cx} cy={cy}
             r={4}
-            className={dotActive ? agent.bgColor.replace('bg-', 'fill-') : 'fill-white/10'}
+            className={dotActive ? ({
+              'bg-orange-500': 'fill-orange-500',
+              'bg-blue-500': 'fill-blue-500',
+              'bg-emerald-500': 'fill-emerald-500',
+              'bg-violet-500': 'fill-violet-500',
+              'bg-rose-500': 'fill-rose-500',
+              'bg-cyan-500': 'fill-cyan-500',
+            }[agent.bgColor] ?? 'fill-white/50') : 'fill-white/10'}
             animate={{ r: dotActive ? 5 : 3.5, opacity: dotActive ? 0.9 : 0.3 }}
             transition={{ type: 'spring', stiffness: 200, damping: 25 }}
           />

@@ -59,34 +59,40 @@ export function GuideSection({
       className="relative scroll-mt-32"
     >
       {/* Section header */}
-      <div className="flex items-center gap-4 mb-10 group">
-        {number != null && (
-          <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-violet-500/20 border border-primary/30 font-mono text-sm sm:text-base font-bold text-primary shadow-[0_0_20px_-5px_var(--color-primary)] transition-all duration-500 group-hover:shadow-[0_0_30px_-5px_var(--color-primary)] group-hover:scale-105">
-            {number}
-          </div>
-        )}
-        {icon && (
-          <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/10 to-violet-500/10 border border-white/[0.08] text-primary/80 transition-all duration-500 group-hover:bg-primary/20">
-            {icon}
-          </div>
-        )}
-        
-        {title.startsWith('Phase ') ? (
-          <div className="flex flex-col">
-            <span className="text-primary/70 font-mono text-xs uppercase tracking-[0.2em] mb-1 opacity-80">{title.split(':')[0]}</span>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white tracking-tight leading-tight">
-              {title.split(':').slice(1).join(':').trim()}
-            </h2>
-          </div>
-        ) : (
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white tracking-tight leading-tight">
-            {title}
-          </h2>
-        )}
+      <div className="relative mb-12 group">
+        <div className="flex items-center gap-5">
+          {number != null && (
+            <div className="flex h-12 w-12 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/25 to-violet-500/25 border border-primary/40 font-mono text-base sm:text-lg font-black text-primary shadow-[0_0_30px_-5px_var(--color-primary),inset_0_1px_1px_rgba(255,255,255,0.1)] transition-all duration-500 group-hover:shadow-[0_0_50px_-5px_var(--color-primary)] group-hover:scale-110 group-hover:border-primary/60">
+              {number}
+            </div>
+          )}
+          {icon && (
+            <div className="flex h-12 w-12 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/15 to-violet-500/15 border border-primary/20 text-primary transition-all duration-500 group-hover:bg-primary/25 group-hover:border-primary/40 group-hover:shadow-[0_0_30px_-8px_var(--color-primary)]">
+              {icon}
+            </div>
+          )}
 
-        <div className="flex-1 h-px bg-gradient-to-r from-primary/30 via-white/10 to-transparent hidden sm:block ml-4" />
+          {title.startsWith('Phase ') ? (
+            <div className="flex flex-col">
+              <span className="text-primary font-mono text-[0.65rem] sm:text-xs uppercase tracking-[0.25em] mb-1.5 font-bold">{title.split(':')[0]}</span>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold bg-gradient-to-r from-white via-white to-white/60 bg-clip-text text-transparent tracking-[-0.02em] leading-[1.15]">
+                {title.split(':').slice(1).join(':').trim()}
+              </h2>
+            </div>
+          ) : (
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold bg-gradient-to-r from-white via-white to-white/60 bg-clip-text text-transparent tracking-[-0.02em] leading-[1.15]">
+              {title}
+            </h2>
+          )}
+        </div>
+
+        {/* Dramatic separator line with glow */}
+        <div className="mt-6 relative">
+          <div className="h-px bg-gradient-to-r from-primary/50 via-violet-500/30 to-transparent" />
+          <div className="absolute left-0 top-0 h-px w-1/3 bg-gradient-to-r from-primary to-transparent blur-[1px]" />
+        </div>
       </div>
-      <div className="space-y-8 text-white/80">{children}</div>
+      <div className="space-y-8">{children}</div>
     </motion.section>
   );
 }
@@ -102,9 +108,9 @@ export function SubSection({
   children: ReactNode;
 }) {
   return (
-    <div className="mt-12 first:mt-6">
-      <h3 className="text-xl sm:text-2xl font-semibold text-white/95 mb-6 flex items-center gap-3">
-        <span className="flex items-center justify-center h-6 w-6 rounded-md bg-primary/10 border border-primary/20">
+    <div className="mt-14 first:mt-6">
+      <h3 className="text-xl sm:text-2xl font-bold text-white mb-6 flex items-center gap-3 tracking-[-0.01em]">
+        <span className="flex items-center justify-center h-7 w-7 rounded-lg bg-gradient-to-br from-primary/20 to-violet-500/15 border border-primary/25 shadow-[0_0_12px_-3px_var(--color-primary)]">
           <Hash className="h-3.5 w-3.5 text-primary" />
         </span>
         {title}
@@ -126,8 +132,8 @@ export function P({
 }) {
   return (
     <p
-      className={`text-[0.95rem] sm:text-[1.05rem] leading-[1.7] tracking-[-0.01em] ${
-        highlight ? "text-zinc-200 font-medium" : "text-zinc-400"
+      className={`text-[0.95rem] sm:text-[1.08rem] leading-[1.75] tracking-[-0.008em] ${
+        highlight ? "text-zinc-100 font-medium" : "text-zinc-300/90"
       }`}
     >
       {children}
@@ -140,12 +146,12 @@ export function P({
 // =============================================================================
 export function BlockQuote({ children }: { children: ReactNode }) {
   return (
-    <div className="relative pl-6 sm:pl-8 py-1 my-6 overflow-hidden">
-      {/* Editorial left accent */}
-      <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-full bg-white/10" />
-      <div className="absolute left-0 top-1/4 bottom-1/4 w-[3px] rounded-full bg-gradient-to-b from-transparent via-white/40 to-transparent" />
-      <Quote className="absolute left-[-4px] top-[-8px] h-8 w-8 text-white/[0.03] rotate-180" />
-      <div className="text-zinc-300 italic leading-[1.75] text-[1.05rem] font-light tracking-[-0.01em]">
+    <div className="relative pl-6 sm:pl-8 py-4 my-8 overflow-hidden rounded-r-xl bg-white/[0.02] backdrop-blur-sm border-r border-y border-white/[0.04]">
+      {/* Glowing left accent */}
+      <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-full bg-gradient-to-b from-primary/60 via-violet-400/60 to-primary/60" />
+      <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-full bg-gradient-to-b from-primary via-violet-400 to-primary blur-[3px] opacity-50" />
+      <Quote className="absolute left-2 top-2 h-10 w-10 text-primary/[0.06] rotate-180" />
+      <div className="relative text-zinc-200 italic leading-[1.8] text-[1.08rem] font-light tracking-[-0.01em]">
         {children}
       </div>
     </div>
@@ -176,9 +182,7 @@ export function PromptBlock({
   whyItWorks?: string;
 }) {
   const [copied, setCopied] = useState(false);
-  const [expanded, setExpanded] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isLong = prompt.length > 400;
 
   useEffect(() => {
     return () => {
@@ -213,65 +217,48 @@ export function PromptBlock({
   };
 
   return (
-    <div className="group relative rounded-xl border border-white/10 bg-[#09090b] overflow-hidden shadow-2xl transition-all duration-500 hover:border-white/20 hover:shadow-[0_0_30px_-5px_rgba(34,211,238,0.15)] ring-1 ring-inset ring-white/5">
-      {/* Noise Texture */}
-      <div className="absolute inset-0 bg-noise opacity-[0.03] pointer-events-none mix-blend-overlay" />
-      
-      {/* Top bar */}
-      <div className="relative flex items-center justify-between px-4 py-3 bg-[#1a1b1e]/80 border-b border-white/10 backdrop-blur-md z-10">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-[#ff5f56] shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]" />
-          <div className="w-3 h-3 rounded-full bg-[#ffbd2e] shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]" />
-          <div className="w-3 h-3 rounded-full bg-[#27c93f] shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]" />
-          <span className="ml-4 text-xs font-mono text-white/50 tracking-wide">{title}</span>
+    <div className="group relative rounded-2xl border border-white/[0.08] bg-[#08080a] overflow-hidden transition-all duration-500 hover:border-primary/20" style={{ boxShadow: "0 8px 32px -4px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03), inset 0 1px 1px rgba(255,255,255,0.03)" }}>
+      {/* Top bar — metal material */}
+      <div className="relative flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-[#141418] to-[#111114] border-b border-white/[0.06] z-10">
+        <div className="flex items-center gap-2.5">
+          <div className="w-3 h-3 rounded-full bg-[#ff5f56] shadow-[0_0_6px_rgba(255,95,86,0.3),inset_0_1px_1px_rgba(255,255,255,0.2)]" />
+          <div className="w-3 h-3 rounded-full bg-[#ffbd2e] shadow-[0_0_6px_rgba(255,189,46,0.3),inset_0_1px_1px_rgba(255,255,255,0.2)]" />
+          <div className="w-3 h-3 rounded-full bg-[#27c93f] shadow-[0_0_6px_rgba(39,201,63,0.3),inset_0_1px_1px_rgba(255,255,255,0.2)]" />
+          <span className="ml-3 text-xs font-mono text-white/40 tracking-wide uppercase">{title}</span>
         </div>
-        <div className="flex items-center gap-2">
-          {isLong && (
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 rounded-full px-2.5 py-1 text-xs text-white/50 hover:bg-white/10 hover:text-white"
-            >
-              <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
-              {expanded ? "Less" : "More"}
-            </button>
-          )}
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={handleCopy}
-            className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs text-white hover:bg-white/20 border border-white/5 shadow-sm"
-          >
-            {copied ? <Check className="h-3.5 w-3.5 text-green-400" /> : <Copy className="h-3.5 w-3.5" />}
-            {copied ? "Copied" : "Copy"}
-          </motion.button>
-        </div>
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={handleCopy}
+          className="opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center gap-1.5 rounded-lg bg-white/[0.06] px-3 py-1.5 text-xs text-white/70 hover:bg-primary/20 hover:text-primary border border-white/[0.06] hover:border-primary/30"
+        >
+          {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+          {copied ? "Copied" : "Copy"}
+        </motion.button>
       </div>
       {/* Prompt body */}
-      <div className={`relative z-10 ${isLong && !expanded ? "max-h-[220px] overflow-hidden" : ""}`}>
-        <div 
-          className="px-6 py-6 text-[0.9rem] text-[#a1a1aa] whitespace-pre-wrap font-mono leading-[1.7] overflow-x-auto selection:bg-cyan-900/40 selection:text-white"
+      <div className="relative z-10">
+        <div
+          className="px-6 py-6 text-[0.9rem] text-zinc-400 whitespace-pre-wrap font-mono leading-[1.75] overflow-x-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent selection:bg-cyan-900/40 selection:text-white"
           dangerouslySetInnerHTML={{ __html: highlightPrompt(prompt) + '<span class="inline-block w-2.5 h-[1.1em] ml-1.5 align-middle bg-cyan-400/80 animate-blink shadow-[0_0_8px_rgba(34,211,238,0.6)]" />' }}
         />
-        {isLong && !expanded && (
-          <div className="absolute bottom-0 inset-x-0 h-32 bg-gradient-to-t from-[#09090b] via-[#09090b]/80 to-transparent pointer-events-none" />
-        )}
       </div>
       {/* Metadata footer */}
       <AnimatePresence>
         {(where || whyItWorks) && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
-            className="relative z-10 bg-white/[0.02] border-t border-white/[0.05] p-5 space-y-4"
+            className="relative z-10 bg-gradient-to-r from-primary/[0.03] to-transparent border-t border-white/[0.06] p-5 space-y-4"
           >
             {where && (
-              <p className="text-xs text-primary/70 font-mono">
-                <span className="opacity-60 text-white">Location:</span> {where}
+              <p className="text-xs text-primary/80 font-mono">
+                <span className="text-white/40 mr-1">Location:</span> {where}
               </p>
             )}
             {whyItWorks && (
               <div className="flex items-start gap-2.5">
-                <Lightbulb className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
-                <p className="text-xs sm:text-sm text-white/70 leading-relaxed">{whyItWorks}</p>
+                <Lightbulb className="h-4 w-4 text-amber-400 shrink-0 mt-0.5 drop-shadow-[0_0_4px_rgba(251,191,36,0.4)]" />
+                <p className="text-xs sm:text-sm text-zinc-300/80 leading-relaxed">{whyItWorks}</p>
               </div>
             )}
           </motion.div>
@@ -295,14 +282,14 @@ export function DataTable({
     <div className="relative group">
       {/* Mobile scroll hint */}
       <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[oklch(0.15_0.01_260)] to-transparent pointer-events-none z-10 opacity-100 sm:opacity-0 transition-opacity" />
-      <div className="overflow-x-auto rounded-2xl border border-white/[0.08] scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+      <div className="overflow-x-auto rounded-2xl border border-white/[0.08] scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent backdrop-blur-sm" style={{ boxShadow: "0 4px 24px -1px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.03)" }}>
         <table className="w-full text-sm min-w-[500px]">
           <thead>
-            <tr className="border-b border-white/[0.08] bg-white/[0.03]">
+            <tr className="border-b border-primary/15 bg-gradient-to-r from-primary/[0.06] via-violet-500/[0.04] to-transparent">
               {headers.map((h, i) => (
                 <th
                   key={i}
-                  className="px-3 sm:px-4 py-3 text-left font-semibold text-white/80 text-xs sm:text-sm whitespace-nowrap"
+                  className="px-3 sm:px-5 py-3.5 text-left font-bold text-white/90 text-xs sm:text-sm whitespace-nowrap tracking-wide"
                 >
                   {h}
                 </th>
@@ -313,10 +300,10 @@ export function DataTable({
             {rows.map((row, ri) => (
               <tr
                 key={ri}
-                className="border-b border-white/[0.04] last:border-0 transition-colors hover:bg-white/[0.02]"
+                className="border-b border-white/[0.04] last:border-0 transition-colors hover:bg-primary/[0.03]"
               >
                 {row.map((cell, ci) => (
-                  <td key={ci} className="px-3 sm:px-4 py-3 text-white/60 text-xs sm:text-sm">
+                  <td key={ci} className="px-3 sm:px-5 py-3 text-zinc-300/80 text-xs sm:text-sm">
                     {cell}
                   </td>
                 ))}
@@ -347,21 +334,22 @@ export function PhaseCard({
 }) {
   return (
     <div
-      className="group relative rounded-2xl bg-[#0a0a0c] p-6 sm:p-8 overflow-hidden transition-all duration-500 hover:-translate-y-1 shadow-xl hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] border border-white/[0.08] hover:border-primary/30"
+      className="group relative rounded-2xl bg-slate-900/60 p-6 sm:p-8 overflow-hidden transition-all duration-500 hover:-translate-y-1 border border-white/[0.08] hover:border-primary/30 backdrop-blur-sm"
+      style={{ boxShadow: "0 4px 24px -1px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.04)" }}
     >
       {/* Dynamic Hover Gradient */}
-      <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 bg-gradient-to-br ${gradient} transition-opacity duration-500 pointer-events-none`} />
-      
-      {/* Top subtle highlight */}
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-30 group-hover:opacity-100 transition-opacity duration-500" />
+      <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-br ${gradient} transition-opacity duration-500 pointer-events-none`} style={{ opacity: 0 }} />
+
+      {/* Top highlight */}
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent group-hover:via-primary/30 transition-colors duration-500" />
 
       <div className="relative z-10 flex items-start gap-4 sm:gap-6">
-        <div className="flex h-12 w-12 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-b from-white/10 to-white/5 border border-white/10 font-mono text-lg sm:text-xl font-bold text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]">
+        <div className="flex h-13 w-13 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/25 to-violet-500/20 border border-primary/30 font-mono text-lg sm:text-xl font-black text-primary shadow-[0_0_25px_-5px_var(--color-primary),inset_0_1px_1px_rgba(255,255,255,0.1)] group-hover:shadow-[0_0_40px_-5px_var(--color-primary)] group-hover:scale-105 transition-all duration-500">
           {phase}
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-white text-lg sm:text-xl tracking-tight">{title}</h3>
-          <p className="mt-2 text-sm sm:text-base text-white/60 leading-relaxed font-light">{description}</p>
+          <h3 className="font-bold text-white text-lg sm:text-xl tracking-[-0.01em]">{title}</h3>
+          <p className="mt-2 text-sm sm:text-base text-zinc-300/80 leading-relaxed">{description}</p>
           {children && <div className="mt-5">{children}</div>}
         </div>
       </div>
@@ -406,17 +394,20 @@ export function TipBox({
 
   return (
     <div
-      className={`relative rounded-2xl border ${c.border} bg-gradient-to-br ${c.gradient} p-4 sm:p-5 glass-subtle`}
+      className={`relative rounded-2xl border ${c.border} bg-gradient-to-br ${c.gradient} p-5 sm:p-6 backdrop-blur-sm overflow-hidden`}
+      style={{ boxShadow: "0 4px 24px -1px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.04)" }}
     >
-      <div className="flex gap-3 sm:gap-4">
-        <div className={`shrink-0 mt-0.5 ${c.iconColor}`}>{c.icon}</div>
+      {/* Subtle top highlight */}
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+      <div className="relative flex gap-3.5 sm:gap-4">
+        <div className={`shrink-0 mt-0.5 ${c.iconColor} drop-shadow-[0_0_6px_currentColor]`}>{c.icon}</div>
         <div className="min-w-0">
           <span
-            className={`text-[0.65rem] sm:text-xs font-bold ${c.iconColor} uppercase tracking-wider`}
+            className={`text-[0.65rem] sm:text-xs font-bold ${c.iconColor} uppercase tracking-[0.15em]`}
           >
             {c.title}
           </span>
-          <div className="mt-1.5 sm:mt-2 text-white/70 text-xs sm:text-sm leading-relaxed">{children}</div>
+          <div className="mt-2 sm:mt-2.5 text-zinc-300/90 text-sm sm:text-[0.95rem] leading-[1.7]">{children}</div>
         </div>
       </div>
     </div>
@@ -428,7 +419,7 @@ export function TipBox({
 // =============================================================================
 export function ToolPill({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 border border-primary/20 text-primary text-xs font-mono font-medium whitespace-nowrap">
+    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-primary/10 border border-primary/25 text-primary text-xs font-mono font-semibold whitespace-nowrap shadow-[0_0_10px_-3px_var(--color-primary)]">
       {children}
     </span>
   );
@@ -439,7 +430,7 @@ export function ToolPill({ children }: { children: ReactNode }) {
 // =============================================================================
 export function IC({ children }: { children: ReactNode }) {
   return (
-    <code className="px-1.5 py-0.5 rounded-md bg-white/[0.06] border border-white/[0.08] text-emerald-400 text-xs sm:text-sm font-mono break-all">
+    <code className="px-1.5 py-0.5 rounded-md bg-emerald-500/[0.08] border border-emerald-500/15 text-emerald-400 text-xs sm:text-sm font-mono font-medium break-all shadow-[0_0_8px_-3px_rgba(52,211,153,0.2)]">
       {children}
     </code>
   );
@@ -450,7 +441,7 @@ export function IC({ children }: { children: ReactNode }) {
 // =============================================================================
 export function Hl({ children }: { children: ReactNode }) {
   return (
-    <span className="font-semibold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent">
+    <span className="font-bold bg-gradient-to-r from-primary via-cyan-300 to-violet-400 bg-clip-text text-transparent drop-shadow-[0_0_12px_var(--color-primary)]">
       {children}
     </span>
   );
@@ -461,11 +452,11 @@ export function Hl({ children }: { children: ReactNode }) {
 // =============================================================================
 export function BulletList({ items }: { items: (string | ReactNode)[] }) {
   return (
-    <ul className="space-y-3">
+    <ul className="space-y-3.5">
       {items.map((item, i) => (
         <li key={i} className="flex items-start gap-3.5">
-          <div className="mt-[0.6rem] h-1.5 w-1.5 rounded-full bg-primary/70 shrink-0 shadow-[0_0_8px_var(--color-primary)]" />
-          <span className="text-zinc-400 text-[0.95rem] sm:text-[1.05rem] leading-[1.7] tracking-[-0.01em]">{item}</span>
+          <div className="mt-[0.55rem] h-2 w-2 rounded-full bg-gradient-to-br from-primary to-violet-400 shrink-0 shadow-[0_0_10px_var(--color-primary)]" />
+          <span className="text-zinc-300/90 text-[0.95rem] sm:text-[1.05rem] leading-[1.7] tracking-[-0.008em]">{item}</span>
         </li>
       ))}
     </ul>
@@ -480,10 +471,10 @@ export function NumberedList({ items }: { items: (string | ReactNode)[] }) {
     <ol className="space-y-4">
       {items.map((item, i) => (
         <li key={i} className="flex items-start gap-4">
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/30 to-violet-500/30 text-[0.65rem] font-bold text-white/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/30 to-violet-500/25 border border-primary/20 text-[0.7rem] font-bold text-primary shadow-[0_0_12px_-3px_var(--color-primary),inset_0_1px_1px_rgba(255,255,255,0.1)]">
             {i + 1}
           </span>
-          <span className="text-zinc-400 text-[0.95rem] sm:text-[1.05rem] leading-[1.7] tracking-[-0.01em] pt-0.5">{item}</span>
+          <span className="text-zinc-300/90 text-[0.95rem] sm:text-[1.05rem] leading-[1.7] tracking-[-0.008em] pt-0.5">{item}</span>
         </li>
       ))}
     </ol>
@@ -495,7 +486,11 @@ export function NumberedList({ items }: { items: (string | ReactNode)[] }) {
 // =============================================================================
 export function Divider() {
   return (
-    <div className="my-12 sm:my-16 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+    <div className="relative my-16 sm:my-20 flex items-center justify-center">
+      <div className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+      <div className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent blur-[2px]" />
+      <div className="relative h-2 w-2 rounded-full bg-gradient-to-br from-primary to-violet-400 shadow-[0_0_12px_var(--color-primary)]" />
+    </div>
   );
 }
 
@@ -512,8 +507,8 @@ export function StatCard({
   sublabel?: string;
 }) {
   return (
-    <div className="relative rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 sm:p-5 text-center backdrop-blur-xl">
-      <div className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent">
+    <div className="relative rounded-2xl border border-primary/15 bg-primary/[0.03] p-4 sm:p-5 text-center backdrop-blur-sm" style={{ boxShadow: "0 4px 24px -1px rgba(0,0,0,0.3), 0 0 20px -5px var(--color-primary, rgba(34,211,238,0.1)), inset 0 1px 1px rgba(255,255,255,0.04)" }}>
+      <div className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent tracking-tight">
         {value}
       </div>
       <div className="mt-1 text-xs sm:text-sm text-white/60 font-medium">{label}</div>
@@ -541,25 +536,29 @@ export function PrincipleCard({
 
   return (
     <div
-      className={`group relative rounded-2xl border border-white/[0.08] bg-[#0a0a0c] overflow-hidden transition-all duration-300 hover:border-white/20 shadow-lg hover:shadow-[0_15px_30px_-15px_rgba(255,255,255,0.05)]`}
+      className="group relative rounded-2xl border border-white/[0.08] bg-slate-900/60 overflow-hidden transition-all duration-500 hover:border-primary/30 backdrop-blur-sm hover:-translate-y-0.5"
+      style={{ boxShadow: "0 4px 24px -1px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.04)" }}
     >
-      <div className={`absolute inset-0 opacity-0 group-hover:opacity-[0.03] bg-gradient-to-br ${gradient || "from-white to-transparent"} transition-opacity duration-500 pointer-events-none`} />
-      
+      {/* Hover glow overlay */}
+      <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-br ${gradient || "from-primary/[0.04] to-violet-500/[0.02]"} transition-opacity duration-500 pointer-events-none`} />
+      {/* Top highlight */}
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent group-hover:via-primary/20 transition-colors duration-500" />
+
       <button
         onClick={() => hasContent && setOpen(!open)}
         className={`w-full relative z-10 flex items-start gap-4 p-5 sm:p-6 text-left ${hasContent ? "cursor-pointer" : "cursor-default"}`}
         aria-expanded={open}
         disabled={!hasContent}
       >
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-primary/20 to-primary/5 border border-primary/20 font-mono text-sm font-bold text-primary shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] group-hover:scale-105 group-hover:border-primary/40 transition-all duration-300">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/25 to-violet-500/20 border border-primary/25 font-mono text-sm font-bold text-primary shadow-[0_0_15px_-3px_var(--color-primary),inset_0_1px_1px_rgba(255,255,255,0.1)] group-hover:scale-110 group-hover:border-primary/50 group-hover:shadow-[0_0_25px_-3px_var(--color-primary)] transition-all duration-300">
           {number}
         </div>
         <div className="flex-1 min-w-0 flex items-center h-10">
-          <h4 className="font-semibold text-white/90 text-base sm:text-lg leading-snug tracking-tight group-hover:text-white transition-colors duration-300">{title}</h4>
+          <h4 className="font-bold text-white/90 text-base sm:text-lg leading-snug tracking-[-0.01em] group-hover:text-white transition-colors duration-300">{title}</h4>
         </div>
         {hasContent && (
           <div className="flex h-10 items-center">
-            <ChevronDown className={`h-5 w-5 text-white/30 shrink-0 transition-transform duration-300 group-hover:text-white/50 ${open ? "rotate-180" : ""}`} />
+            <ChevronDown className={`h-5 w-5 text-white/30 shrink-0 transition-all duration-300 group-hover:text-primary/70 ${open ? "rotate-180" : ""}`} />
           </div>
         )}
       </button>
@@ -572,7 +571,7 @@ export function PrincipleCard({
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden relative z-10"
           >
-            <div className="px-5 sm:px-6 pb-5 sm:pb-6 pt-0 text-white/60 text-sm sm:text-[0.95rem] leading-[1.7] border-t border-white/[0.05] mt-0 pt-5 font-light">
+            <div className="px-5 sm:px-6 pb-5 sm:pb-6 pt-0 text-zinc-300/80 text-sm sm:text-[0.95rem] leading-[1.7] border-t border-white/[0.06] mt-0 pt-5">
               {children}
             </div>
           </motion.div>
@@ -887,3 +886,8 @@ export function TableOfContents({ items }: { items: TocItem[] }) {
     </>
   );
 }
+
+export * from "./guide-components";
+export * from "./plan-to-beads-viz";
+export * from "./swarm-execution-viz";
+export * from "./agent-mail-viz";

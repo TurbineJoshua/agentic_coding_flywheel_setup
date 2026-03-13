@@ -575,29 +575,33 @@ function InteractiveTmuxSimulator() {
     setActiveWindowId(windows[nextIdx].id);
   }, [windows, activeWindowId]);
 
+  const detachTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleDetach = useCallback(() => {
     if (phase !== "live") return;
+    if (detachTimerRef.current) clearTimeout(detachTimerRef.current);
     setDetachedSnapshot(windows);
     setPhase("detaching");
     // After glitch animation, show detached state
-    const t = setTimeout(() => {
+    detachTimerRef.current = setTimeout(() => {
       setPhase("detached");
+      detachTimerRef.current = null;
     }, 1200);
-    return () => clearTimeout(t);
   }, [phase, windows]);
 
   const handleReattach = useCallback(() => {
     if (phase !== "detached") return;
+    if (detachTimerRef.current) clearTimeout(detachTimerRef.current);
     setPhase("reattaching");
-    const t = setTimeout(() => {
+    detachTimerRef.current = setTimeout(() => {
       if (detachedSnapshot) {
         setWindows(detachedSnapshot);
         setActiveWindowId(detachedSnapshot[0].id);
       }
       setPhase("live");
       setDetachedSnapshot(null);
+      detachTimerRef.current = null;
     }, 800);
-    return () => clearTimeout(t);
   }, [phase, detachedSnapshot]);
 
   const handleSelectPane = useCallback(
@@ -608,6 +612,12 @@ function InteractiveTmuxSimulator() {
     },
     [activeWindowId],
   );
+
+  useEffect(() => {
+    return () => {
+      if (detachTimerRef.current) clearTimeout(detachTimerRef.current);
+    };
+  }, []);
 
   // --- render ---
   const isLive = phase === "live";

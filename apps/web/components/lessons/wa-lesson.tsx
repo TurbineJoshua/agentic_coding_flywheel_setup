@@ -942,15 +942,12 @@ function InteractiveTerminalObserver() {
   // Auto-play timer
   useEffect(() => {
     if (!playing) return;
+    if (scenarioIdx >= totalScenarios - 1) {
+      setTimeout(() => setPlaying(false), 0);
+      return;
+    }
     timerRef.current = setTimeout(() => {
-      setScenarioIdx((s) => {
-        const next = s + 1;
-        if (next >= totalScenarios) {
-          setTimeout(() => setPlaying(false), 0);
-          return totalScenarios - 1;
-        }
-        return next;
-      });
+      setScenarioIdx((s) => Math.min(s + 1, totalScenarios - 1));
     }, 4000);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);

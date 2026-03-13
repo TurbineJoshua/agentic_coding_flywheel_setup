@@ -143,12 +143,12 @@ get_suggested_fix() {
 
     if [[ -n "$pattern" ]]; then
         fix="${ERROR_PATTERNS[$pattern]}"
-        echo -e "$fix"
+        printf "%b\n" "$fix"
         return 0
     fi
 
     # No pattern matched - return generic guidance
-    echo -e "Unknown error. Troubleshooting steps:\n  1. Check internet connectivity: curl -I https://google.com\n  2. Verify disk space: df -h\n  3. Check system logs: journalctl -xe\n  4. Search the error message online\n  5. Report at: https://github.com/Dicklesworthstone/agentic_coding_flywheel_setup/issues"
+    printf "%b\n" "Unknown error. Troubleshooting steps:\n  1. Check internet connectivity: curl -I https://google.com\n  2. Verify disk space: df -h\n  3. Check system logs: journalctl -xe\n  4. Search the error message online\n  5. Report at: https://github.com/Dicklesworthstone/agentic_coding_flywheel_setup/issues"
     return 1
 }
 
@@ -187,7 +187,7 @@ format_error_with_fix() {
         echo ""
     fi
     echo "Suggested fix:"
-    echo -e "$suggested_fix" | sed 's/^/  /'
+    printf "%b\n" "$suggested_fix" | sed 's/^/  /'
     echo ""
     echo "=========================================="
 }

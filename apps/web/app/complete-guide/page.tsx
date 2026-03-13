@@ -30,7 +30,6 @@ import {
   GraduationCap,
   ScrollText,
   Download,
-  ChevronDown,
 } from "lucide-react";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { copyTextToClipboard } from "@/lib/utils";
@@ -55,6 +54,9 @@ import {
   PhaseCard,
   PrincipleCard,
   OperatorCard,
+  PlanToBeadsViz,
+  SwarmExecutionViz,
+  AgentMailViz,
 } from "@/components/complete-guide/guide-components";
 
 // =============================================================================
@@ -666,9 +668,14 @@ export default function CompleteGuidePage() {
       <main className="min-h-screen overflow-x-hidden">
         <Hero />
 
-        <div className="container mx-auto px-4 sm:px-6 relative">
-          {/* Subtle ambient lighting for the body */}
-          <div className="absolute top-1/4 left-0 w-full h-[1000px] bg-primary/5 blur-[120px] rounded-[100%] pointer-events-none -z-10 mix-blend-screen" />
+        <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10 relative">
+          {/* Layered ambient lighting for the body */}
+          <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+            <div className="absolute top-[10%] left-[10%] w-[600px] h-[600px] bg-primary/[0.04] blur-[150px] rounded-full" />
+            <div className="absolute top-[30%] right-[5%] w-[500px] h-[500px] bg-violet-500/[0.03] blur-[150px] rounded-full" />
+            <div className="absolute top-[55%] left-[20%] w-[700px] h-[700px] bg-primary/[0.03] blur-[180px] rounded-full" />
+            <div className="absolute top-[75%] right-[15%] w-[500px] h-[500px] bg-violet-500/[0.025] blur-[150px] rounded-full" />
+          </div>
 
           {/* Download CTA */}
           <div className="flex justify-center pt-10 pb-2">
@@ -680,13 +687,12 @@ export default function CompleteGuidePage() {
             >
               <Download className="h-5 w-5 transition-transform duration-300 group-hover:-translate-y-0.5" />
               <span>Download This Article as Markdown for Your Agent</span>
-              <ChevronDown className="h-4 w-4 opacity-50 transition-transform duration-300 group-hover:translate-y-0.5" />
             </a>
           </div>
 
           <div className="flex justify-center gap-8 lg:gap-16 pt-12">
             {/* Main content */}
-            <div className="flex-1 max-w-[65ch] pb-32 space-y-24 w-full shrink-0 relative z-10">
+            <div className="flex-1 min-w-0 max-w-[90ch] pb-32 space-y-24 w-full relative z-10">
               {/* HOW TO READ THIS GUIDE */}
               <GuideSection
                 id="how-to-read"
@@ -735,7 +741,7 @@ export default function CompleteGuidePage() {
           The <Hl>markdown plan</Hl> is where the big thinking happens.
         </>,
         <>
-          The <Hl><Jargon term="beads">beads</Jargon></Hl> are how that thinking gets packaged for execution
+          The <Jargon term="beads" className="font-semibold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent">beads</Jargon> are how that thinking gets packaged for execution
           by many agents.
         </>,
         <>
@@ -1244,7 +1250,7 @@ export default function CompleteGuidePage() {
     <NumberedList
       items={[
         <>
-          Visit the wizard website at <IC>agent-flywheel.com</IC>
+          Visit the wizard website at <a href="https://agent-flywheel.com" target="_blank" rel="noopener noreferrer" className="font-semibold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent underline decoration-primary/40 underline-offset-2 hover:decoration-primary/70 transition-colors">agent-flywheel.com</a>
         </>,
         <>
           Follow the instructions to rent a <Jargon term="vps">VPS</Jargon>{" "}
@@ -1332,7 +1338,7 @@ alias gmi='gemini --yolo'`}
           <Jargon term="supabase">Supabase</Jargon>, Rust/WASM for performance-critical parts
         </>,
         <>
-          <Hl><Jargon term="cli">CLI</Jargon> tools:</Hl> Golang or Rust
+          <Jargon term="cli" className="font-semibold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent">CLI</Jargon> <Hl>tools:</Hl> Golang or Rust
         </>,
       ]}
     />
@@ -1501,7 +1507,20 @@ alias gmi='gemini --yolo'`}
 
   <PromptBlock
     title="The Synthesis Prompt"
-    prompt={`I asked 3 competing LLMs to do the exact same thing and they came up with\npretty different plans which you can read below. I want you to REALLY\ncarefully analyze their plans with an open mind and be intellectually honest\nabout what they did that's better than your plan. Then I want you to come up\nwith the best possible revisions to your plan that artfully and skillfully\nblends the "best of all worlds" to create a true, ultimate, superior hybrid\nversion of the plan that best achieves our stated goals and will work the\nbest in real-world practice to solve the problems we are facing and our\noverarching goals while ensuring the extreme success of the enterprise as\nbest as possible; you should provide me with a complete series of git-diff\nstyle changes to your original plan to turn it into the new, enhanced, much\nlonger and detailed plan that integrates the best of all the plans with\nevery good idea included (you don't need to mention which ideas came from\nwhich models in the final revised enhanced plan):`}
+    prompt={`I asked 3 competing LLMs to do the exact same thing and they came up with
+pretty different plans which you can read below. I want you to REALLY
+carefully analyze their plans with an open mind and be intellectually honest
+about what they did that's better than your plan. Then I want you to come up
+with the best possible revisions to your plan that artfully and skillfully
+blends the "best of all worlds" to create a true, ultimate, superior hybrid
+version of the plan that best achieves our stated goals and will work the
+best in real-world practice to solve the problems we are facing and our
+overarching goals while ensuring the extreme success of the enterprise as
+best as possible; you should provide me with a complete series of git-diff
+style changes to your original plan to turn it into the new, enhanced, much
+longer and detailed plan that integrates the best of all the plans with
+every good idea included (you don't need to mention which ideas came from
+which models in the final revised enhanced plan):`}
     where="GPT Pro web app with Extended Reasoning enabled"
     whyItWorks="GPT Pro can hold all competing plans in context simultaneously and perform genuine arbitration. The git-diff output format keeps the integration step mechanical and verifiable."
   />
@@ -1520,7 +1539,10 @@ alias gmi='gemini --yolo'`}
     </P>
     <PromptBlock
       title="Integration Prompt (Claude Code)"
-      prompt={`OK, now integrate these revisions to the markdown plan in-place; be\nmeticulous. At the end, you can tell me which changes you wholeheartedly\nagree with, which you somewhat agree with, and which you disagree with:\n[Pasted synthesis output]`}
+      prompt={`OK, now integrate these revisions to the markdown plan in-place; be
+meticulous. At the end, you can tell me which changes you wholeheartedly
+agree with, which you somewhat agree with, and which you disagree with:
+[Pasted synthesis output]`}
       where="Claude Code (Opus), applied to the markdown plan file"
       whyItWorks="Asking for a self-assessment at the end forces the agent to engage critically with the material rather than rubber-stamping every diff. You get a natural review layer built in."
     />
@@ -1554,7 +1576,14 @@ alias gmi='gemini --yolo'`}
 
   <PromptBlock
     title="The Refinement Prompt"
-    prompt={`Carefully review this entire plan for me and come up with your best\nrevisions in terms of better architecture, new features, changed features,\netc. to make it better, more robust/reliable, more performant, more\ncompelling/useful, etc. For each proposed change, give me your detailed\nanalysis and rationale/justification for why it would make the project\nbetter along with the git-diff style changes relative to the original\nmarkdown plan shown below:\n<PASTE YOUR EXISTING COMPLETE PLAN HERE>`}
+    prompt={`Carefully review this entire plan for me and come up with your best
+revisions in terms of better architecture, new features, changed features,
+etc. to make it better, more robust/reliable, more performant, more
+compelling/useful, etc. For each proposed change, give me your detailed
+analysis and rationale/justification for why it would make the project
+better along with the git-diff style changes relative to the original
+markdown plan shown below:
+<PASTE YOUR EXISTING COMPLETE PLAN HERE>`}
     where="GPT Pro web app, fresh conversation each round"
     whyItWorks="Fresh conversations prevent the model from anchoring on its own prior output. Each round starts cold and finds genuinely new problems."
   />
@@ -1580,7 +1609,10 @@ alias gmi='gemini --yolo'`}
     </P>
     <PromptBlock
       title="Overshoot Mismatch Hunt"
-      prompt={`Do this again, and actually be super super careful: can you please check\nover the plan again and compare it to all that feedback I gave you? I am\npositive that you missed or screwed up at least 80 elements of that\ncomplex feedback.`}
+      prompt={`Do this again, and actually be super super careful: can you please check
+over the plan again and compare it to all that feedback I gave you? I am
+positive that you missed or screwed up at least 80 elements of that
+complex feedback.`}
       whyItWorks="By asserting 80+ errors exist, the model treats the problem as unsolved and continues scanning. The actual number doesn\u2019t matter\u2014the framing is what overrides the satisfaction signal."
     />
   </SubSection>
@@ -1616,6 +1648,8 @@ alias gmi='gemini --yolo'`}
     task trackers: beads carry <strong>enough embedded context that a fresh agent can act
     immediately</strong> without loading the whole project.
   </TipBox>
+
+  <PlanToBeadsViz />
 
   <PromptBlock
     title="The Conversion Prompt"
@@ -2142,9 +2176,10 @@ ntm palette`} />
                 <SubSection title="Why Naive Agent Communication Fails">
                   <P>Building your own agent coordination from scratch is full of footguns:</P>
                   <P><Hl>Footgun #1: Broadcast-to-all defaults.</Hl> Agents are lazy and will only use broadcast mode, spamming every agent with mostly irrelevant information. Burns precious context window.</P>
-                  <P><Hl>Footgun #2: Poor <Jargon term="mcp">MCP</Jargon> ergonomics.</Hl> It takes huge iteration to get the API surface right so agents use it reliably without wasting <Jargon term="token">tokens</Jargon>.</P>
+                  <P><Hl>Footgun #2:</Hl> Poor <Jargon term="mcp" className="font-semibold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent">MCP</Jargon> <Hl>ergonomics.</Hl> It takes huge iteration to get the API surface right so agents use it reliably without wasting <Jargon term="token">tokens</Jargon>.</P>
                   <P><Hl>Footgun #3: Forcing git worktrees.</Hl> Worktrees demolish velocity and create reconciliation debt when agents diverge.</P>
                   <P><Hl>Footgun #4: Rigid identity and locking.</Hl> Rigid locks held by dead agents block everyone else. Agent Mail uses advisory reservations with TTL expiry and reclaim mechanics.</P>
+                  <AgentMailViz />
                 </SubSection>
 
                 <SubSection title="Bead IDs as Threading Anchors">
@@ -2243,8 +2278,11 @@ ntm palette`} />
                     "Stagger the start by 30 seconds minimum between each agent launch",
                     "Wait 4 seconds after launch before sending the initial prompt",
                     "For Codex: send Enter twice after pasting long prompts",
-                    "Use Agent Mail to announce what you\u2019re working on"
+                    "Use Agent Mail to announce what you’re working on"
                   ]} />
+                  
+                  <SwarmExecutionViz />
+
                   <BlockQuote>&ldquo;Classic &lsquo;thundering herd&rsquo; problem. Usually addressed with retry with exponential backoff and jitter, but here marking beads quickly and staggered start is best.&rdquo;</BlockQuote>
                 </SubSection>
 
@@ -2254,8 +2292,8 @@ ntm palette`} />
                   <BulletList items={[
                     "12 agents max on a single project",
                     "Or run 5 agents per project across multiple projects",
-                    "Don\u2019t divide roles \u2014 all agents are generalists",
-                    "Agents do rounds of reviewing their own work and others\u2019"
+                    "Don’t divide roles \u2014 all agents are generalists",
+                    "Agents do rounds of reviewing their own work and others’"
                   ]} />
                 </SubSection>
 
@@ -2279,10 +2317,10 @@ ntm palette`} />
                       ["Agent goes in circles after compaction", "Forgot AGENTS.md", "Force reread of AGENTS.md, use post-compaction reminder tooling, kill/restart if erratic"],
                       ["Bead sits in_progress too long", "Agent crashed or silently blocked", "Check Agent Mail, check if session alive, reclaim bead, split out blocker if underspecified"],
                       ["Contradictory implementations", "No Agent Mail coordination or wrong bead boundary", "Audit reservation use, ensure work is threaded through br-### conversation, revise bead boundaries"],
-                      ["Lots of code but goal feels far", "Strategic drift: open beads don\u2019t close the remaining gap", "Stop and run high-level diagnosis before burning more tokens"]
+                      ["Lots of code but goal feels far", "Strategic drift: open beads don’t close the remaining gap", "Stop and run high-level diagnosis before burning more tokens"]
                     ]}
                   />
-                  <P>That last case is the one people miss most often because the swarm can <Hl>look productive while still heading in the wrong direction</Hl>. These are the <Hl>&ldquo;Come to Jesus&rdquo; moments</Hl> with the agents, used to make sure &ldquo;we aren&apos;t losing sight of the bigger picture&rdquo; after days of methodically cranking through beads.</P>
+                  <P>That last case is the one people miss most often because the swarm can <Hl>look productive while still heading in the wrong direction</Hl>. These are the <Hl>&ldquo;Come to Jesus&rdquo; moments</Hl> with the agents, used to make sure &ldquo;we aren’t losing sight of the bigger picture&rdquo; after days of methodically cranking through beads.</P>
                   <P>In those moments, the right move is not another local review. It is a high-level reality check:</P>
                   <PromptBlock
                     title="Strategic Reality Check"
@@ -2734,9 +2772,9 @@ ntm palette`} />
                   <TipBox variant="info">
                     For a broader public skills collection: <a href="https://github.com/Dicklesworthstone/agent_flywheel_clawdbot_skills_and_integrations/tree/main/skills" target="_blank" rel="noopener noreferrer" className="underline">github.com/Dicklesworthstone/agent_flywheel_clawdbot_skills_and_integrations</a>
                   </TipBox>
-                  <P>For a much larger paid library of higher-end skills, see <Hl>jeffreys-skills.md</Hl>. It is a $20/month service with many of the strongest curated skills, new skills added continuously, and a dedicated proprietary CLI called <IC>jsm</IC> for managing them. Unlike jeffreysprompts.com, it does not have a free section.</P>
-                  <P>The prompt side has a similar split. <Hl>jeffreysprompts.com</Hl> has a generous free section and is open source. It also has a paid Pro tier with additional prompts and a dedicated proprietary CLI called <IC>jfp</IC> for managing prompt collections.</P>
-                  <P>Both paid offerings&mdash;the Pro side of jeffreysprompts.com and jeffreys-skills.md&mdash;are still under active development. That means readers should expect the occasional rough edge or bug. Active work is underway to fix issues quickly, feedback is genuinely appreciated, and refunds are available if someone tries them and is unhappy.</P>
+                  <P>For a much larger paid library of higher-end skills, see <a href="https://jeffreys-skills.md" target="_blank" rel="noopener noreferrer" className="font-semibold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent underline decoration-primary/40 underline-offset-2 hover:decoration-primary/70 transition-colors">jeffreys-skills.md</a>. It is a $20/month service with many of the strongest curated skills, new skills added continuously, and a dedicated proprietary CLI called <IC>jsm</IC> for managing them. Unlike jeffreysprompts.com, it does not have a free section.</P>
+                  <P>The prompt side has a similar split. <a href="https://jeffreysprompts.com" target="_blank" rel="noopener noreferrer" className="font-semibold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent underline decoration-primary/40 underline-offset-2 hover:decoration-primary/70 transition-colors">jeffreysprompts.com</a> has a generous free section and is open source. It also has a paid Pro tier with additional prompts and a dedicated proprietary CLI called <IC>jfp</IC> for managing prompt collections.</P>
+                  <P>Both paid offerings&mdash;the Pro side of <a href="https://jeffreysprompts.com" target="_blank" rel="noopener noreferrer" className="font-semibold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent underline decoration-primary/40 underline-offset-2 hover:decoration-primary/70 transition-colors">jeffreysprompts.com</a> and <a href="https://jeffreys-skills.md" target="_blank" rel="noopener noreferrer" className="font-semibold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent underline decoration-primary/40 underline-offset-2 hover:decoration-primary/70 transition-colors">jeffreys-skills.md</a>&mdash;are still under active development. That means readers should expect the occasional rough edge or bug. Active work is underway to fix issues quickly, feedback is genuinely appreciated, and refunds are available if someone tries them and is unhappy.</P>
                   <P highlight>Skills provide the prompts, procedures, anti-pattern guidance, and tool-specific workflows directly to agents, which reduces the amount of bespoke prompting a human needs to do by hand.</P>
                 </SubSection>
 
@@ -3341,7 +3379,7 @@ even better for you in the future!`} />
 
                 <SubSection title="Getting Started">
                   <P>
-                    The complete system is free and 100% <Jargon term="open-source">open-source</Jargon>: <Hl>https://agent-flywheel.com/</Hl>
+                    The complete system is free and 100% <Jargon term="open-source">open-source</Jargon>: <a href="https://agent-flywheel.com/" target="_blank" rel="noopener noreferrer" className="font-semibold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent underline decoration-primary/40 underline-offset-2 hover:decoration-primary/70 transition-colors">agent-flywheel.com</a>
                   </P>
                   <BlockQuote>
                     &ldquo;You don&rsquo;t even need to know much at all about computers; you just need the desire to
@@ -3381,16 +3419,16 @@ even better for you in the future!`} />
                   from prompts that worked well in real sessions.
                 </P>
                 <P>
-                  For a larger public prompt collection, see <Hl>jeffreysprompts.com</Hl> (generous free section,
+                  For a larger public prompt collection, see <a href="https://jeffreysprompts.com" target="_blank" rel="noopener noreferrer" className="font-semibold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent underline decoration-primary/40 underline-offset-2 hover:decoration-primary/70 transition-colors">jeffreysprompts.com</a> (generous free section,
                   open source). Also has a paid Pro tier with a CLI called <ToolPill>jfp</ToolPill>. For skills:
-                  <Hl> jeffreys-skills.md</Hl> ($20/month) with curated skills and a CLI called <ToolPill>jsm</ToolPill>.
+                  <a href="https://jeffreys-skills.md" target="_blank" rel="noopener noreferrer" className="font-semibold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent underline decoration-primary/40 underline-offset-2 hover:decoration-primary/70 transition-colors"> jeffreys-skills.md</a> ($20/month) with curated skills and a CLI called <ToolPill>jsm</ToolPill>.
                   Both paid offerings are under active development.
                 </P>
 
                 <SubSection title="Planning Prompts">
                   <PromptBlock
                     title="Plan Creation: Multi-Model Synthesis"
-                    prompt={`I asked 3 competing LLMs to do the exact same thing and they came up with pretty different plans which you can read below. I want you to REALLY carefully analyze their plans with an open mind and be intellectually honest about what they did that's better than your plan. Then I want you to come up with the best possible revisions to your plan (you should simply update your existing document for your original plan with the revisions) that artfully and skillfully blends the "best of all worlds" to create a true, ultimate, superior hybrid version of the plan that best achieves our stated goals and will work the best in real-world practice to solve the problems we are facing and our overarching goals while ensuring the extreme success of the enterprise as best as possible; you should provide me with a complete series of git-diff style changes to your original plan to turn it into the new, enhanced, much longer and detailed plan that integrates the best of all the plans with every good idea included (you don't need to mention which ideas came from which models in the final revised enhanced plan):`}
+                    prompt={`I asked 3 competing LLMs to do the exact same thing and they came up with pretty different plans which you can read below. I want you to REALLY carefully analyze their plans with an open mind and be intellectually honest about what they did that's better than your plan. Then I want you to come up with the best possible revisions to your plan (you should simply update your existing document for your original plan with the revisions) that artfully and skillfully blends the "best of all worlds" to create a true, ultimate, superior hybrid version of the plan that best achieves our stated goals and will work best in real-world practice to solve the problems we are facing and our overarching goals while ensuring the extreme success of the enterprise as best as possible; you should provide me with a complete series of git-diff style changes to your original plan to turn it into the new, enhanced, much longer and detailed plan that integrates the best of all the plans with every good idea included (you don't need to mention which ideas came from which models in the final revised enhanced plan):`}
                     where="GPT Pro web app with Extended Reasoning"
                   />
 

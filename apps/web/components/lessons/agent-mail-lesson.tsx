@@ -931,7 +931,11 @@ function AgentInboxCard({
       {/* Pulsing glow */}
       {agent.registered && !isConflictAgent && (
         <motion.div
-          className={`absolute inset-0 ${agent.bgAccent}/10 blur-xl pointer-events-none`}
+          className={`absolute inset-0 blur-xl pointer-events-none ${
+            agent.bgAccent === 'bg-blue-500' ? 'bg-blue-500/10' :
+            agent.bgAccent === 'bg-emerald-500' ? 'bg-emerald-500/10' :
+            agent.bgAccent === 'bg-red-500' ? 'bg-red-500/10' : 'bg-white/10'
+          }`}
           animate={{ opacity: [0.2, 0.45, 0.2] }}
           transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
         />
@@ -1267,7 +1271,11 @@ function InteractiveCoordinationSim() {
               {AGENT_CONFIGS.map((a) => (
                 <div key={a.id} className="flex items-center gap-1.5">
                   <div
-                    className={`h-2.5 w-2.5 rounded-full ${a.bgAccent}/60`}
+                    className={`h-2.5 w-2.5 rounded-full ${
+                      a.bgAccent === 'bg-blue-500' ? 'bg-blue-500/60' :
+                      a.bgAccent === 'bg-emerald-500' ? 'bg-emerald-500/60' :
+                      a.bgAccent === 'bg-red-500' ? 'bg-red-500/60' : 'bg-white/60'
+                    }`}
                   />
                   <span className="text-[10px] text-white/40">{a.name}</span>
                 </div>

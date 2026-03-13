@@ -170,7 +170,7 @@ export function Jargon({ term, children, className, gradientHeading }: JargonPro
         onFocus={handleFocus}
         onBlur={handleBlur}
         className={cn(
-          "relative inline cursor-help",
+          "relative inline cursor-help [color:inherit]",
           // Subtle dotted underline - very gentle visual hint
           "decoration-[1.5px] underline underline-offset-[3px]",
           "decoration-primary/30 decoration-dotted",

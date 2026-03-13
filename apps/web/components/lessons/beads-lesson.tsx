@@ -1802,7 +1802,7 @@ function InteractiveDependencyGraph() {
                     No beads ready. Close blockers first.
                   </motion.div>
                 ) : (
-                  readyBeads
+                  [...readyBeads]
                     .sort((a, b) => a.priority - b.priority)
                     .map((bead) => {
                       const pi = priorityInfo(bead.priority);

@@ -1016,6 +1016,7 @@ function InteractiveBuildTimeline() {
     return () => {
       if (phaseTimerRef.current) clearTimeout(phaseTimerRef.current);
       if (auditTimerRef.current) clearTimeout(auditTimerRef.current);
+      for (const t of simTimersRef.current) clearTimeout(t);
     };
   }, []);
 
