@@ -37,5 +37,5 @@ export default async function LessonPage({ params }: Props) {
     notFound();
   }
 
-  return <LessonContent lesson={lesson} />;
+  return <LessonContent key={lesson.slug} lesson={lesson} />;
 }

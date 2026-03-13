@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -24,30 +24,58 @@ import {
   LESSONS,
   TOTAL_LESSONS,
   useCompletedLessons,
+  getCompletedLessons,
   getCompletionPercentage,
   getNextUncompletedLesson,
+  getLessonStatus,
+  type LessonStatus,
 } from "@/lib/lessonProgress";
 import { springs } from "@/lib/design-tokens";
 import { useReducedMotion } from "@/lib/hooks/useReducedMotion";
 import { sendEvent, initLessonFunnel, getLessonFunnelData } from "@/lib/analytics";
+import { isInteractiveKeyboardTarget } from "@/lib/utils";
 
-type LessonStatus = "completed" | "current" | "locked";
+type QuickReferenceItem = {
+  href: string;
+  lessonSlug?: string;
+  icon: typeof Terminal;
+  title: string;
+  desc: string;
+  gradient: string;
+};
 
-function getLessonStatus(
-  lessonId: number,
-  completedLessons: number[]
-): LessonStatus {
-  if (completedLessons.includes(lessonId)) {
-    return "completed";
-  }
-  const firstUncompleted = LESSONS.find(
-    (l) => !completedLessons.includes(l.id)
-  );
-  if (firstUncompleted?.id === lessonId) {
-    return "current";
-  }
-  return "locked";
-}
+const QUICK_REFERENCE_ITEMS: QuickReferenceItem[] = [
+  {
+    href: "/learn/agent-commands",
+    lessonSlug: "agent-commands",
+    icon: Terminal,
+    title: "Agent Commands",
+    desc: "Claude, Codex, Gemini shortcuts",
+    gradient: "from-violet-500/10 to-violet-500/5",
+  },
+  {
+    href: "/learn/ntm-palette",
+    lessonSlug: "ntm-palette",
+    icon: BookOpen,
+    title: "NTM Commands",
+    desc: "Session management reference",
+    gradient: "from-blue-500/10 to-blue-500/5",
+  },
+  {
+    href: "/learn/commands",
+    icon: List,
+    title: "Command Reference",
+    desc: "Searchable list of key commands",
+    gradient: "from-emerald-500/10 to-emerald-500/5",
+  },
+  {
+    href: "/learn/glossary",
+    icon: Book,
+    title: "Glossary",
+    desc: "Definitions for all jargon terms",
+    gradient: "from-amber-500/10 to-amber-500/5",
+  },
+];
 
 function LessonCard({
   lesson,
@@ -163,9 +191,13 @@ function LessonCard({
 }
 
 export default function LearnDashboard() {
-  const [completedLessons] = useCompletedLessons();
-  const completionPercentage = getCompletionPercentage(completedLessons);
-  const nextLesson = getNextUncompletedLesson(completedLessons);
+  const { completedLessons, hasLoaded } = useCompletedLessons();
+  const completionPercentage = hasLoaded
+    ? getCompletionPercentage(completedLessons)
+    : 0;
+  const nextLesson = hasLoaded
+    ? getNextUncompletedLesson(completedLessons)
+    : undefined;
   const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
   const hasTrackedPageView = useRef(false);
@@ -175,6 +207,13 @@ export default function LearnDashboard() {
     if (hasTrackedPageView.current) return;
     hasTrackedPageView.current = true;
 
+    const hydratedCompletedLessons = getCompletedLessons();
+    const hydratedCompletionPercentage = getCompletionPercentage(
+      hydratedCompletedLessons
+    );
+    const hydratedNextLesson =
+      getNextUncompletedLesson(hydratedCompletedLessons);
+
     // Initialize lesson funnel if not already started
     if (!getLessonFunnelData()) {
       initLessonFunnel(TOTAL_LESSONS);
@@ -182,24 +221,39 @@ export default function LearnDashboard() {
 
     // Track learning hub visit with context
     sendEvent('learning_hub_visit', {
-      completed_lessons: completedLessons.length,
+      completed_lessons: hydratedCompletedLessons.length,
       total_lessons: TOTAL_LESSONS,
-      completion_percentage: completionPercentage,
-      next_lesson: nextLesson?.slug || 'all_complete',
+      completion_percentage: hydratedCompletionPercentage,
+      next_lesson: hydratedNextLesson?.slug || 'all_complete',
     });
-  }, [completedLessons.length, completionPercentage, nextLesson]);
+  }, []);
 
   // Keyboard navigation state
   const [selectedIndex, setSelectedIndex] = useState(-1);
-  const accessibleLessons = LESSONS.filter((_, i) => {
-    const status = getLessonStatus(i, completedLessons);
-    return status !== "locked";
-  });
+  const accessibleLessons = useMemo(() => {
+    if (!hasLoaded) {
+      return [];
+    }
+    return LESSONS.filter((lesson) => {
+        const status = getLessonStatus(lesson.id, completedLessons);
+        return status !== "locked";
+      });
+  }, [completedLessons, hasLoaded]);
+  const effectiveSelectedIndex =
+    selectedIndex >= 0 && selectedIndex < accessibleLessons.length
+      ? selectedIndex
+      : -1;
 
   // Keyboard navigation handler
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      if (!hasLoaded) {
+        return;
+      }
+      if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) {
+        return;
+      }
+      if (isInteractiveKeyboardTarget(e.target)) {
         return;
       }
 
@@ -217,8 +271,8 @@ export default function LearnDashboard() {
           setSelectedIndex((prev) => (prev > 0 ? prev - 1 : 0));
           break;
         case "Enter":
-          if (selectedIndex >= 0 && selectedIndex < accessibleLessons.length) {
-            const lesson = accessibleLessons[selectedIndex];
+          if (effectiveSelectedIndex >= 0) {
+            const lesson = accessibleLessons[effectiveSelectedIndex];
             router.push(`/learn/${lesson.slug}`);
           }
           break;
@@ -227,7 +281,7 @@ export default function LearnDashboard() {
           break;
       }
     },
-    [accessibleLessons, selectedIndex, router]
+    [accessibleLessons, effectiveSelectedIndex, hasLoaded, router]
   );
 
   useEffect(() => {
@@ -336,7 +390,9 @@ export default function LearnDashboard() {
                   <h2 className="text-lg font-semibold">Your Progress</h2>
                 </div>
                 <p className="text-sm text-muted-foreground/80 sm:text-base">
-                  {completedLessons.length === TOTAL_LESSONS
+                  {!hasLoaded
+                    ? "Loading your saved progress..."
+                    : completedLessons.length === TOTAL_LESSONS
                     ? "🎉 Congratulations! You've mastered all lessons."
                     : nextLesson
                       ? `Up next: ${nextLesson.title}`
@@ -375,7 +431,7 @@ export default function LearnDashboard() {
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
                     <span className="font-mono text-base font-bold text-primary sm:text-lg">
-                      {completionPercentage}%
+                      {hasLoaded ? `${completionPercentage}%` : "..."}
                     </span>
                   </div>
                 </motion.div>
@@ -389,7 +445,7 @@ export default function LearnDashboard() {
                     transition={prefersReducedMotion ? { duration: 0 } : { ...springs.smooth, delay: 0.4 }}
                     style={{ textShadow: "0 0 30px oklch(0.7 0.2 280 / 0.3)" }}
                   >
-                    {completedLessons.length}/{TOTAL_LESSONS}
+                    {hasLoaded ? `${completedLessons.length}/${TOTAL_LESSONS}` : "--"}
                   </motion.div>
                   <div className="text-sm text-muted-foreground/60">lessons complete</div>
                 </div>
@@ -413,7 +469,7 @@ export default function LearnDashboard() {
             </div>
 
             {/* Continue button */}
-            {nextLesson && (
+            {hasLoaded && nextLesson && (
               <motion.div
                 className="mt-5 lg:mt-6"
                 initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
@@ -440,24 +496,41 @@ export default function LearnDashboard() {
           transition={prefersReducedMotion ? { duration: 0 } : { ...springs.smooth, delay: 0.3 }}
         >
           <h2 className="mb-5 text-xl font-semibold lg:mb-6 lg:text-2xl">All Lessons</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 lg:gap-5">
-            {LESSONS.map((lesson, index) => {
-              const status = getLessonStatus(lesson.id, completedLessons);
-              const accessibleIndex = accessibleLessons.findIndex(
-                (l) => l.id === lesson.id
-              );
-              return (
-                <LessonCard
+          {hasLoaded ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 lg:gap-5">
+              {LESSONS.map((lesson, index) => {
+                const status = getLessonStatus(lesson.id, completedLessons);
+                const accessibleIndex = accessibleLessons.findIndex(
+                  (l) => l.id === lesson.id
+                );
+                return (
+                  <LessonCard
+                    key={lesson.id}
+                    lesson={lesson}
+                    status={status}
+                    index={index}
+                    isSelected={accessibleIndex === effectiveSelectedIndex}
+                    prefersReducedMotion={prefersReducedMotion}
+                  />
+                );
+              })}
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 lg:gap-5">
+              {LESSONS.slice(0, 8).map((lesson) => (
+                <div
                   key={lesson.id}
-                  lesson={lesson}
-                  status={status}
-                  index={index}
-                  isSelected={accessibleIndex === selectedIndex}
-                  prefersReducedMotion={prefersReducedMotion}
-                />
-              );
-            })}
-          </div>
+                  className="overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 backdrop-blur-xl"
+                >
+                  <div className="mb-4 h-10 w-10 animate-pulse rounded-xl bg-white/[0.06]" />
+                  <div className="mb-3 h-5 w-3/4 animate-pulse rounded bg-white/[0.06]" />
+                  <div className="mb-2 h-4 w-full animate-pulse rounded bg-white/[0.04]" />
+                  <div className="mb-6 h-4 w-5/6 animate-pulse rounded bg-white/[0.04]" />
+                  <div className="h-3 w-16 animate-pulse rounded bg-white/[0.04]" />
+                </div>
+              ))}
+            </div>
+          )}
         </motion.section>
 
         {/* Quick reference links - glassmorphic */}
@@ -472,60 +545,66 @@ export default function LearnDashboard() {
 
             <h2 className="relative mb-5 text-lg font-semibold lg:mb-6 lg:text-xl">Quick Reference</h2>
             <div className="relative grid gap-3 sm:grid-cols-2 sm:gap-4">
-              {[
-                {
-                  href: "/learn/agent-commands",
-                  icon: Terminal,
-                  title: "Agent Commands",
-                  desc: "Claude, Codex, Gemini shortcuts",
-                  gradient: "from-violet-500/10 to-violet-500/5",
-                },
-                {
-                  href: "/learn/ntm-palette",
-                  icon: BookOpen,
-                  title: "NTM Commands",
-                  desc: "Session management reference",
-                  gradient: "from-blue-500/10 to-blue-500/5",
-                },
-                {
-                  href: "/learn/commands",
-                  icon: List,
-                  title: "Command Reference",
-                  desc: "Searchable list of key commands",
-                  gradient: "from-emerald-500/10 to-emerald-500/5",
-                },
-                {
-                  href: "/learn/glossary",
-                  icon: Book,
-                  title: "Glossary",
-                  desc: "Definitions for all jargon terms",
-                  gradient: "from-amber-500/10 to-amber-500/5",
-                },
-              ].map((item, index) => (
-                <motion.div
-                  key={item.href}
-                  initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={prefersReducedMotion ? { duration: 0 } : { ...springs.smooth, delay: 0.6 + index * 0.05 }}
-                  whileHover={prefersReducedMotion ? undefined : { y: -3, scale: 1.01 }}
-                >
-                  <Link
-                    href={item.href}
-                    className={`group flex items-center gap-4 rounded-xl border border-white/[0.06] bg-gradient-to-br ${item.gradient} p-4 backdrop-blur transition-all duration-300 hover:border-white/[0.12] hover:bg-white/[0.04]`}
-                  >
+              {QUICK_REFERENCE_ITEMS.map((item, index) => {
+                const lesson = item.lessonSlug
+                  ? LESSONS.find((candidate) => candidate.slug === item.lessonSlug)
+                  : undefined;
+                const isLockedReference =
+                  !!lesson &&
+                  (!hasLoaded || getLessonStatus(lesson.id, completedLessons) === "locked");
+                const lockHint = !hasLoaded
+                  ? "Loading saved progress..."
+                  : nextLesson
+                    ? `Complete ${nextLesson.title} first`
+                    : "Complete the earlier lessons first";
+
+                const cardContent = (
+                  <>
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] transition-colors group-hover:bg-white/[0.1]">
                       <item.icon className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-foreground" />
                     </div>
                     <div className="min-w-0">
                       <div className="font-medium transition-colors group-hover:text-primary">{item.title}</div>
                       <div className="truncate text-sm text-muted-foreground/60">
-                        {item.desc}
+                        {isLockedReference ? lockHint : item.desc}
                       </div>
                     </div>
-                    <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground/40 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100 group-focus-within:translate-x-0.5 group-focus-within:opacity-100" />
-                  </Link>
-                </motion.div>
-              ))}
+                    {!isLockedReference && (
+                      <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground/40 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100 group-focus-within:translate-x-0.5 group-focus-within:opacity-100" />
+                    )}
+                  </>
+                );
+
+                return (
+                  <motion.div
+                    key={item.href}
+                    initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={prefersReducedMotion ? { duration: 0 } : { ...springs.smooth, delay: 0.6 + index * 0.05 }}
+                    whileHover={
+                      prefersReducedMotion || isLockedReference
+                        ? undefined
+                        : { y: -3, scale: 1.01 }
+                    }
+                  >
+                    {isLockedReference ? (
+                      <div
+                        aria-disabled="true"
+                        className={`group flex items-center gap-4 rounded-xl border border-white/[0.06] bg-gradient-to-br ${item.gradient} p-4 opacity-60 backdrop-blur`}
+                      >
+                        {cardContent}
+                      </div>
+                    ) : (
+                      <Link
+                        href={item.href}
+                        className={`group flex items-center gap-4 rounded-xl border border-white/[0.06] bg-gradient-to-br ${item.gradient} p-4 backdrop-blur transition-all duration-300 hover:border-white/[0.12] hover:bg-white/[0.04]`}
+                      >
+                        {cardContent}
+                      </Link>
+                    )}
+                  </motion.div>
+                );
+              })}
             </div>
           </div>
         </motion.section>
@@ -547,7 +626,7 @@ export default function LearnDashboard() {
       </div>
 
       {/* Mobile fixed bottom bar - glassmorphic */}
-      {nextLesson && (
+      {hasLoaded && nextLesson && (
         <motion.div
           className="fixed inset-x-0 bottom-0 z-50 border-t border-white/[0.08] bg-black/80 p-4 pb-safe backdrop-blur-xl sm:hidden"
           initial={prefersReducedMotion ? false : { y: 100 }}

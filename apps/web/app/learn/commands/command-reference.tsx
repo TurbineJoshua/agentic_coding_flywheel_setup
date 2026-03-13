@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Home, Search, Terminal } from "lucide-react";
 import { CommandRefCard } from "@/components/command-ref-card";
-import { COMMANDS, COMMAND_CATEGORIES, type CommandCategory } from "@/lib/commands";
+import { ALL_COMMANDS, COMMAND_CATEGORIES, type CommandCategory } from "@/lib/commands";
 
 type CategoryFilter = "all" | CommandCategory;
 
@@ -29,7 +29,7 @@ export function CommandReference() {
   const filteredCommands = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
-    return COMMANDS.filter((command) => {
+    return ALL_COMMANDS.filter((command) => {
       if (category !== "all" && command.category !== category) {
         return false;
       }
@@ -118,7 +118,7 @@ export function CommandReference() {
 
         <div className="mb-6 flex items-center justify-between text-sm text-muted-foreground">
           <span>
-            Showing {filteredCommands.length} of {COMMANDS.length} commands
+            Showing {filteredCommands.length} of {ALL_COMMANDS.length} commands
           </span>
           {category !== "all" ? (
             <span>Category: {getCategoryLabel(category)}</span>

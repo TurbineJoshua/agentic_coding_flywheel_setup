@@ -13,6 +13,7 @@ import {
   Clock,
   GraduationCap,
   Home,
+  Lock,
   Sparkles,
   Zap,
   BookOpen,
@@ -24,7 +25,10 @@ import {
   type Lesson,
   LESSONS,
   getNextLesson,
+  getNextUncompletedLesson,
   getPreviousLesson,
+  getLessonStatus,
+  isLessonAccessible,
   useCompletedLessons,
 } from "@/lib/lessonProgress";
 import {
@@ -39,6 +43,7 @@ import {
   FinalCelebrationModal,
 } from "@/components/learn/confetti-celebration";
 import { useLessonAnalytics } from "@/lib/hooks/useLessonAnalytics";
+import { isInteractiveKeyboardTarget } from "@/lib/utils";
 
 interface Props {
   lesson: Lesson;
@@ -82,11 +87,11 @@ function FloatingOrb({
 
 // Stunning sidebar with depth and premium feel
 function LessonSidebar({
-  currentLessonId,
   completedLessons,
+  currentLessonId,
 }: {
-  currentLessonId: number;
   completedLessons: number[];
+  currentLessonId: number;
 }) {
   const progressPercent = Math.round((completedLessons.length / LESSONS.length) * 100);
 
@@ -197,18 +202,29 @@ function LessonSidebar({
               <div className="absolute left-[34px] top-6 bottom-6 w-0.5 bg-gradient-to-b from-primary/30 via-white/[0.08] to-emerald-500/30" />
 
               {LESSONS.map((lesson) => {
-                const isCompleted = completedLessons.includes(lesson.id);
+                const status = getLessonStatus(lesson.id, completedLessons);
+                const isCompleted = status === "completed";
                 const isCurrent = lesson.id === currentLessonId;
+                const isAccessible = status !== "locked";
 
                 return (
                   <li key={lesson.id} className="relative">
                     <Link
-                      href={`/learn/${lesson.slug}`}
+                      href={isAccessible ? `/learn/${lesson.slug}` : "#"}
+                      aria-disabled={!isAccessible}
+                      tabIndex={isAccessible ? 0 : -1}
                       className={`group relative flex items-center gap-4 rounded-xl px-4 py-4 transition-all duration-500 ${
                         isCurrent
                           ? "bg-gradient-to-r from-primary/20 via-primary/10 to-transparent shadow-[inset_0_0_30px_rgba(var(--primary-rgb),0.1)]"
-                          : "hover:bg-white/[0.03]"
+                          : isAccessible
+                            ? "hover:bg-white/[0.03]"
+                            : "cursor-not-allowed opacity-60"
                       }`}
+                      onClick={(event) => {
+                        if (!isAccessible) {
+                          event.preventDefault();
+                        }
+                      }}
                     >
                       {/* Timeline node */}
                       <div className="relative z-10">
@@ -289,16 +305,34 @@ function LessonSidebar({
 
 export function LessonContent({ lesson }: Props) {
   const router = useRouter();
-  const [completedLessons, markComplete] = useCompletedLessons();
+  const { completedLessons, hasLoaded, markComplete } = useCompletedLessons();
   const [completedSteps] = useCompletedSteps();
   const readingProgress = useReadingProgress();
-  const isCompleted = completedLessons.includes(lesson.id);
+  const lessonStatus = hasLoaded
+    ? getLessonStatus(lesson.id, completedLessons)
+    : "current";
+  const isLocked = hasLoaded && lessonStatus === "locked";
+  const isCompleted = hasLoaded && completedLessons.includes(lesson.id);
   const prevLesson = getPreviousLesson(lesson.id);
   const nextLesson = getNextLesson(lesson.id);
+  const accessiblePrevLesson =
+    hasLoaded && prevLesson && isLessonAccessible(prevLesson.id, completedLessons)
+      ? prevLesson
+      : undefined;
+  const accessibleNextLesson =
+    hasLoaded && nextLesson && isLessonAccessible(nextLesson.id, completedLessons)
+      ? nextLesson
+      : undefined;
+  const nextAvailableLesson =
+    hasLoaded
+      ? getNextUncompletedLesson(completedLessons) ?? LESSONS[LESSONS.length - 1]
+      : undefined;
   const isWizardComplete = completedSteps.length === TOTAL_WIZARD_STEPS;
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [showFinalCelebration, setShowFinalCelebration] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isMarkingComplete, setIsMarkingComplete] = useState(false);
   const { celebrate } = useConfetti();
 
   // Analytics tracking for lesson funnel
@@ -313,7 +347,7 @@ export function LessonContent({ lesson }: Props) {
     };
   }, []);
 
-  const lessonContent = renderLessonComponent(lesson.slug);
+  const lessonContent = hasLoaded ? renderLessonComponent(lesson.slug) : null;
 
   const wizardStepSlugByLesson: Record<string, string> = {
     welcome: "launch-onboarding",
@@ -324,62 +358,172 @@ export function LessonContent({ lesson }: Props) {
   const wizardStep = getStepBySlug(wizardStepSlug);
   const wizardStepTitle = wizardStep?.title ?? "Setup Wizard";
 
-  const handleMarkComplete = useCallback(() => {
+  const handleMarkComplete = useCallback(async () => {
+    if (!hasLoaded || isLocked || isMarkingComplete) {
+      return;
+    }
+
     if (isCompleted) {
-      if (nextLesson) {
-        router.push(`/learn/${nextLesson.slug}`);
+      if (accessibleNextLesson) {
+        router.push(`/learn/${accessibleNextLesson.slug}`);
       }
       return;
     }
 
-    // Track in localStorage
-    markComplete(lesson.id);
+    setSaveError(null);
+    setIsMarkingComplete(true);
 
-    // Track in GA4 analytics
-    markAnalyticsComplete({ is_final_lesson: !nextLesson });
+    try {
+      await markComplete(lesson.id);
 
-    const isFinalLesson = !nextLesson;
+      // Track in GA4 analytics only after persistence succeeds.
+      markAnalyticsComplete({ is_final_lesson: !nextLesson });
 
-    celebrate(isFinalLesson);
-    setToastMessage(getCompletionMessage(isFinalLesson));
-    setShowToast(true);
+      const isFinalLesson = !nextLesson;
 
-    timeoutsRef.current.push(setTimeout(() => setShowToast(false), 2500));
+      celebrate(isFinalLesson);
+      setToastMessage(getCompletionMessage(isFinalLesson));
+      setShowToast(true);
 
-    if (isFinalLesson) {
-      timeoutsRef.current.push(setTimeout(() => setShowFinalCelebration(true), 500));
-    } else {
-      timeoutsRef.current.push(setTimeout(() => {
-        router.push(`/learn/${nextLesson.slug}`);
-      }, 1500));
+      timeoutsRef.current.push(setTimeout(() => setShowToast(false), 2500));
+
+      if (isFinalLesson) {
+        timeoutsRef.current.push(setTimeout(() => setShowFinalCelebration(true), 500));
+      } else {
+        timeoutsRef.current.push(setTimeout(() => {
+          router.push(`/learn/${nextLesson.slug}`);
+        }, 1500));
+      }
+    } catch (error) {
+      console.error("Failed to save lesson progress", error);
+      setSaveError(
+        "Unable to save lesson progress. Check your browser storage settings and try again."
+      );
+    } finally {
+      setIsMarkingComplete(false);
     }
-  }, [lesson.id, markComplete, markAnalyticsComplete, nextLesson, router, celebrate, isCompleted]);
+  }, [
+    accessibleNextLesson,
+    hasLoaded,
+    isLocked,
+    isMarkingComplete,
+    lesson.id,
+    markComplete,
+    markAnalyticsComplete,
+    nextLesson,
+    router,
+    celebrate,
+    isCompleted,
+  ]);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      if (!hasLoaded) {
+        return;
+      }
+      if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) {
+        return;
+      }
+      if (isInteractiveKeyboardTarget(e.target)) {
         return;
       }
 
       switch (e.key) {
         case "ArrowLeft":
         case "h":
-          if (prevLesson) router.push(`/learn/${prevLesson.slug}`);
+          if (accessiblePrevLesson) router.push(`/learn/${accessiblePrevLesson.slug}`);
           break;
         case "ArrowRight":
         case "l":
-          if (nextLesson) router.push(`/learn/${nextLesson.slug}`);
+          if (accessibleNextLesson) router.push(`/learn/${accessibleNextLesson.slug}`);
           break;
         case "c":
-          if (!isCompleted) handleMarkComplete();
+          if (!isLocked && !isCompleted) {
+            void handleMarkComplete();
+          }
           break;
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [prevLesson, nextLesson, isCompleted, handleMarkComplete, router]);
+  }, [accessiblePrevLesson, accessibleNextLesson, hasLoaded, isCompleted, isLocked, handleMarkComplete, router]);
+
+  if (!hasLoaded) {
+    return (
+      <div className="min-h-screen bg-black relative overflow-x-hidden">
+        <div className="fixed inset-0 pointer-events-none">
+          <FloatingOrb className="w-[700px] h-[700px] bg-primary/10 blur-[180px] -top-48 left-1/4" />
+          <FloatingOrb className="w-[420px] h-[420px] bg-violet-500/10 blur-[120px] bottom-0 right-0" delay={2} />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,_rgba(var(--primary-rgb),0.15),_transparent)]" />
+        </div>
+
+        <div className="relative mx-auto flex min-h-screen max-w-3xl items-center justify-center px-6 py-16">
+          <div className="w-full rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.08] via-white/[0.03] to-white/[0.05] p-10 backdrop-blur-2xl">
+            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-primary/80">
+              Loading Progress
+            </p>
+            <h1 className="mb-4 text-4xl font-bold tracking-tight text-white">
+              {lesson.title}
+            </h1>
+            <p className="mb-8 text-lg leading-relaxed text-white/65">
+              Checking your saved lesson progress so this page can unlock the right navigation and completion state.
+            </p>
+            <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
+              <div className="h-full w-1/3 animate-pulse rounded-full bg-gradient-to-r from-primary via-violet-500 to-emerald-400" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLocked) {
+    return (
+      <div className="min-h-screen bg-black relative overflow-x-hidden">
+        <div className="fixed inset-0 pointer-events-none">
+          <FloatingOrb className="w-[700px] h-[700px] bg-primary/10 blur-[180px] -top-48 left-1/4" />
+          <FloatingOrb className="w-[420px] h-[420px] bg-violet-500/10 blur-[120px] bottom-0 right-0" delay={2} />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,_rgba(var(--primary-rgb),0.15),_transparent)]" />
+        </div>
+
+        <div className="relative mx-auto flex min-h-screen max-w-3xl items-center justify-center px-6 py-16">
+          <div className="w-full rounded-3xl border border-amber-500/20 bg-gradient-to-br from-white/[0.08] via-white/[0.03] to-white/[0.05] p-10 backdrop-blur-2xl">
+            <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-300 shadow-[0_0_40px_rgba(245,158,11,0.2)]">
+              <Lock className="h-7 w-7" />
+            </div>
+            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-amber-300/80">
+              Lesson Locked
+            </p>
+            <h1 className="mb-4 text-4xl font-bold tracking-tight text-white">
+              {lesson.title}
+            </h1>
+            <p className="mb-8 text-lg leading-relaxed text-white/65">
+              Finish <span className="font-semibold text-white">{nextAvailableLesson?.title ?? "the current lesson"}</span> first
+              to keep the curriculum in sequence. The learning hub only unlocks one new lesson at a time.
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link
+                href={`/learn/${nextAvailableLesson?.slug ?? lesson.slug}`}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/15 px-5 py-3 font-semibold text-white transition-all duration-300 hover:bg-primary/25"
+              >
+                Go to Current Lesson
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/learn"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-5 py-3 font-semibold text-white/80 transition-all duration-300 hover:bg-white/[0.08] hover:text-white"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to Learning Hub
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black relative overflow-x-hidden">
@@ -431,8 +575,8 @@ export function LessonContent({ lesson }: Props) {
 
       <div className="relative flex">
         <LessonSidebar
-          currentLessonId={lesson.id}
           completedLessons={completedLessons}
+          currentLessonId={lesson.id}
         />
 
         <main className="flex-1 min-w-0">
@@ -604,17 +748,24 @@ export function LessonContent({ lesson }: Props) {
                         </h3>
                         <p className="text-white/50 text-lg">
                           {isCompleted
-                            ? nextLesson
+                            ? accessibleNextLesson
                               ? "Outstanding work! Continue to the next lesson."
                               : "You've completed the entire curriculum!"
                             : "Mark complete to track your learning progress."}
                         </p>
+                        {saveError && (
+                          <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+                            {saveError}
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     <Button
-                      onClick={handleMarkComplete}
-                      disabled={isCompleted && !nextLesson}
+                      onClick={() => {
+                        void handleMarkComplete();
+                      }}
+                      disabled={isMarkingComplete || (isCompleted && !accessibleNextLesson)}
                       size="lg"
                       className={`shrink-0 h-14 px-8 text-lg font-semibold rounded-xl transition-all duration-500 ${
                         isCompleted
@@ -623,7 +774,7 @@ export function LessonContent({ lesson }: Props) {
                       }`}
                     >
                       {isCompleted ? (
-                        nextLesson ? (
+                        accessibleNextLesson ? (
                           <span className="flex items-center gap-3">
                             Next Lesson
                             <ArrowRight className="h-5 w-5" />
@@ -634,12 +785,12 @@ export function LessonContent({ lesson }: Props) {
                             <Star className="h-5 w-5" />
                           </span>
                         )
-                      ) : (
-                        <span className="flex items-center gap-3">
-                          Mark Complete
-                          <Check className="h-5 w-5" />
-                        </span>
-                      )}
+                        ) : (
+                          <span className="flex items-center gap-3">
+                            {isMarkingComplete ? "Saving..." : "Mark Complete"}
+                            <Check className="h-5 w-5" />
+                          </span>
+                        )}
                     </Button>
                   </div>
                 </div>
@@ -647,9 +798,9 @@ export function LessonContent({ lesson }: Props) {
 
               {/* Beautiful navigation cards */}
               <nav className="hidden lg:grid grid-cols-2 gap-6 mt-16">
-                {prevLesson ? (
+                {accessiblePrevLesson ? (
                   <Link
-                    href={`/learn/${prevLesson.slug}`}
+                    href={`/learn/${accessiblePrevLesson.slug}`}
                     className="group relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 transition-all duration-500 hover:bg-white/[0.05] hover:border-white/20 hover:shadow-[0_0_40px_rgba(255,255,255,0.05)] hover:-translate-y-1 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background outline-none"
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-white/[0.05] to-transparent opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-500" />
@@ -659,23 +810,23 @@ export function LessonContent({ lesson }: Props) {
                       </div>
                       <div>
                         <div className="text-xs text-white/50 mb-1 uppercase tracking-wider font-medium">Previous</div>
-                        <div className="text-lg font-semibold text-white/80 transition-colors group-hover:text-white">{prevLesson.title}</div>
+                        <div className="text-lg font-semibold text-white/80 transition-colors group-hover:text-white">{accessiblePrevLesson.title}</div>
                       </div>
                     </div>
                   </Link>
                 ) : (
                   <div />
                 )}
-                {nextLesson ? (
+                {accessibleNextLesson ? (
                   <Link
-                    href={`/learn/${nextLesson.slug}`}
+                    href={`/learn/${accessibleNextLesson.slug}`}
                     className="group relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 transition-all duration-500 hover:bg-white/[0.05] hover:border-white/20 hover:shadow-[0_0_40px_rgba(255,255,255,0.05)] hover:-translate-y-1 text-right focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background outline-none"
                   >
                     <div className="absolute inset-0 bg-gradient-to-l from-white/[0.05] to-transparent opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-500" />
                     <div className="relative flex items-center justify-end gap-5">
                       <div>
                         <div className="text-xs text-white/50 mb-1 uppercase tracking-wider font-medium">Next</div>
-                        <div className="text-lg font-semibold text-white/80 transition-colors group-hover:text-white">{nextLesson.title}</div>
+                        <div className="text-lg font-semibold text-white/80 transition-colors group-hover:text-white">{accessibleNextLesson.title}</div>
                       </div>
                       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/[0.05] border border-white/[0.08] transition-all duration-500 group-hover:scale-110 group-hover:bg-white/[0.1] group-hover:border-white/20">
                         <ChevronRight className="h-6 w-6 text-white/60 transition-all duration-500 group-hover:text-white group-hover:translate-x-1" />
@@ -706,11 +857,11 @@ export function LessonContent({ lesson }: Props) {
               variant="ghost"
               size="icon"
               className="h-14 w-14 shrink-0 rounded-2xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.08] hover:border-white/20 transition-all duration-300 hover:scale-105"
-              disabled={!prevLesson}
-              asChild={!!prevLesson}
+              disabled={!accessiblePrevLesson}
+              asChild={!!accessiblePrevLesson}
             >
-              {prevLesson ? (
-                <Link href={`/learn/${prevLesson.slug}`} aria-label="Previous">
+              {accessiblePrevLesson ? (
+                <Link href={`/learn/${accessiblePrevLesson.slug}`} aria-label="Previous">
                   <ChevronLeft className="h-6 w-6" />
                 </Link>
               ) : (
@@ -724,17 +875,22 @@ export function LessonContent({ lesson }: Props) {
                   ? "bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.5)]"
                   : "bg-gradient-to-r from-primary to-violet-500 hover:from-primary/90 hover:to-violet-400 shadow-[0_0_30px_rgba(var(--primary-rgb),0.5)]"
               }`}
-              onClick={handleMarkComplete}
-              disabled={isCompleted && !nextLesson}
+              onClick={() => {
+                void handleMarkComplete();
+              }}
+              disabled={isMarkingComplete || (isCompleted && !accessibleNextLesson)}
             >
               {isCompleted ? (
-                nextLesson ? (
+                accessibleNextLesson ? (
                   <span className="flex items-center gap-2">Next<ArrowRight className="h-5 w-5" /></span>
                 ) : (
                   <span className="flex items-center gap-2">Done<Star className="h-5 w-5" /></span>
                 )
               ) : (
-                <span className="flex items-center gap-2">Complete<Check className="h-5 w-5" /></span>
+                <span className="flex items-center gap-2">
+                  {isMarkingComplete ? "Saving..." : "Complete"}
+                  <Check className="h-5 w-5" />
+                </span>
               )}
             </Button>
 
@@ -742,11 +898,11 @@ export function LessonContent({ lesson }: Props) {
               variant="ghost"
               size="icon"
               className="h-14 w-14 shrink-0 rounded-2xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.08] hover:border-white/20 transition-all duration-300 hover:scale-105"
-              disabled={!nextLesson}
-              asChild={!!nextLesson}
+              disabled={!accessibleNextLesson}
+              asChild={!!accessibleNextLesson}
             >
-              {nextLesson ? (
-                <Link href={`/learn/${nextLesson.slug}`} aria-label="Next">
+              {accessibleNextLesson ? (
+                <Link href={`/learn/${accessibleNextLesson.slug}`} aria-label="Next">
                   <ChevronRight className="h-6 w-6" />
                 </Link>
               ) : (

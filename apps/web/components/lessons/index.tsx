@@ -46,6 +46,21 @@ import { RanoLesson } from "./rano-lesson";
 import { CautLesson } from "./caut-lesson";
 import { AadcLesson } from "./aadc-lesson";
 import { RustProxyLesson } from "./rust-proxy-lesson";
+import { BvLesson } from "./bv-lesson";
+import { CaamLesson } from "./caam-lesson";
+import { SwarmCoordinationLesson } from "./swarm-coordination-lesson";
+import { DebuggingAgentsLesson } from "./debugging-agents-lesson";
+import { ContextMasteryLesson } from "./context-mastery-lesson";
+import { CiCdLesson } from "./ci-cd-lesson";
+import { ProjectBootstrapLesson } from "./project-bootstrap-lesson";
+import { AstGrepLesson } from "./ast-grep-lesson";
+import { AgentsMdLesson } from "./agents-md-lesson";
+import { ModernCliLesson } from "./modern-cli-lesson";
+import { TailscaleLesson } from "./tailscale-lesson";
+import { LangRuntimesLesson } from "./lang-runtimes-lesson";
+import { CloudInfraLesson } from "./cloud-infra-lesson";
+import { SecurityLayersLesson } from "./security-layers-lesson";
+import { AcfsDoctorLesson } from "./acfs-doctor-lesson";
 
 // Render the lesson content for a given slug.
 // This intentionally uses a static switch so ESLint can guarantee components are not created during render.
@@ -143,6 +158,36 @@ export function renderLessonComponent(slug: string): React.ReactNode | null {
       return <AadcLesson />;
     case "rust-proxy":
       return <RustProxyLesson />;
+    case "bv":
+      return <BvLesson />;
+    case "caam":
+      return <CaamLesson />;
+    case "swarm-coordination":
+      return <SwarmCoordinationLesson />;
+    case "debugging-agents":
+      return <DebuggingAgentsLesson />;
+    case "context-mastery":
+      return <ContextMasteryLesson />;
+    case "ci-cd":
+      return <CiCdLesson />;
+    case "project-bootstrap":
+      return <ProjectBootstrapLesson />;
+    case "ast-grep":
+      return <AstGrepLesson />;
+    case "agents-md":
+      return <AgentsMdLesson />;
+    case "modern-cli":
+      return <ModernCliLesson />;
+    case "tailscale":
+      return <TailscaleLesson />;
+    case "lang-runtimes":
+      return <LangRuntimesLesson />;
+    case "cloud-infra":
+      return <CloudInfraLesson />;
+    case "security-layers":
+      return <SecurityLayersLesson />;
+    case "acfs-doctor":
+      return <AcfsDoctorLesson />;
     default:
       return null;
   }
@@ -196,4 +241,19 @@ export {
   CautLesson,
   AadcLesson,
   RustProxyLesson,
+  BvLesson,
+  CaamLesson,
+  SwarmCoordinationLesson,
+  DebuggingAgentsLesson,
+  ContextMasteryLesson,
+  CiCdLesson,
+  ProjectBootstrapLesson,
+  AstGrepLesson,
+  AgentsMdLesson,
+  ModernCliLesson,
+  TailscaleLesson,
+  LangRuntimesLesson,
+  CloudInfraLesson,
+  SecurityLayersLesson,
+  AcfsDoctorLesson,
 };

@@ -19,6 +19,11 @@ import {
 import { motion } from "@/components/motion";
 import { CommandCard } from "@/components/command-card";
 import { springs, staggerDelay } from "@/lib/design-tokens";
+import {
+  ALL_COMMANDS as GENERATED_COMMANDS,
+  getManifestCommandByCliName,
+  getManifestCommandDocsUrl,
+} from "@/lib/commands";
 
 type CommandCategory =
   | "agents"
@@ -37,6 +42,7 @@ type CommandEntry = {
   description: string;
   example: string;
   category: CommandCategory;
+  aliases?: string[];
   learnMoreHref?: string;
 };
 
@@ -164,7 +170,7 @@ const COMMANDS: CommandEntry[] = [
     description: "Create/update issues and dependencies",
     example: "br ready",
     category: "stack",
-    learnMoreHref: "/learn/tools/beads",
+    learnMoreHref: "/learn/beads",
   },
   {
     name: "bv",
@@ -172,7 +178,7 @@ const COMMANDS: CommandEntry[] = [
     description: "Analyze the task DAG and pick work (robot protocol)",
     example: "bv --robot-triage --recipe high-impact",
     category: "stack",
-    learnMoreHref: "/learn/tools/beads",
+    learnMoreHref: "/learn/bv",
   },
   {
     name: "ubs",
@@ -413,6 +419,43 @@ const COMMANDS: CommandEntry[] = [
   },
 ];
 
+function mergeCanonicalCommandEntry(command: CommandEntry): CommandEntry {
+  const manifestCommand = getManifestCommandByCliName(command.name);
+  if (!manifestCommand) {
+    return command;
+  }
+
+  return {
+    ...command,
+    example: manifestCommand.commandExample ?? command.example,
+    aliases:
+      command.aliases && command.aliases.length > 0
+        ? command.aliases
+        : manifestCommand.cliAliases.length > 0
+          ? manifestCommand.cliAliases
+          : undefined,
+    learnMoreHref:
+      command.learnMoreHref ?? getManifestCommandDocsUrl(manifestCommand.moduleId),
+  };
+}
+
+const MERGED_COMMANDS = COMMANDS.map(mergeCanonicalCommandEntry);
+const EXISTING_COMMAND_NAMES = new Set(MERGED_COMMANDS.map((command) => command.name));
+
+const GENERATED_COMMAND_ENTRIES: CommandEntry[] = GENERATED_COMMANDS
+  .filter((command) => !EXISTING_COMMAND_NAMES.has(command.name))
+  .map((command) => ({
+    name: command.name,
+    fullName: command.fullName,
+    description: command.description,
+    example: command.example,
+    category: command.category,
+    aliases: command.aliases,
+    learnMoreHref: command.docsUrl,
+  }));
+
+const ALL_COMMAND_ENTRIES: CommandEntry[] = [...MERGED_COMMANDS, ...GENERATED_COMMAND_ENTRIES];
+
 function toAnchorId(value: string): string {
   return value
     .toLowerCase()
@@ -550,12 +593,20 @@ export default function CommandReferencePage() {
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
   const filteredCommands = useMemo(() => {
-    return COMMANDS.filter((cmd) => {
+    return ALL_COMMAND_ENTRIES.filter((cmd) => {
       if (category !== "all" && cmd.category !== category) {
         return false;
       }
       if (!normalizedQuery) return true;
-      const haystack = `${cmd.name} ${cmd.fullName} ${cmd.description} ${cmd.example}`.toLowerCase();
+      const haystack = [
+        cmd.name,
+        cmd.fullName,
+        cmd.description,
+        cmd.example,
+        ...(cmd.aliases ?? []),
+      ]
+        .join(" ")
+        .toLowerCase();
       return haystack.includes(normalizedQuery);
     });
   }, [category, normalizedQuery]);

@@ -78,10 +78,13 @@ export function getCompletedLessons(): number[] {
 }
 
 /** Save completed lessons to localStorage */
-export function setCompletedLessons(lessons: number[]): void {
+export function setCompletedLessons(lessons: number[]): boolean {
   const normalized = normalizeCompletedLessons(lessons);
-  safeSetJSON(COMPLETED_LESSONS_KEY, normalized);
-  emitCompletedLessonsChanged(normalized);
+  const didPersist = safeSetJSON(COMPLETED_LESSONS_KEY, normalized);
+  if (didPersist) {
+    emitCompletedLessonsChanged(normalized);
+  }
+  return didPersist;
 }
 
 /** Mark a lesson as completed (pure function, returns new array) */
@@ -103,6 +106,34 @@ export function getCompletionPercentage(completedLessons: number[]): number {
   return Math.round((completedLessons.length / TOTAL_LESSONS) * 100);
 }
 
+export type LessonStatus = "completed" | "current" | "locked";
+
+export function getLessonStatus(
+  lessonId: number,
+  completedLessons: number[]
+): LessonStatus {
+  if (completedLessons.includes(lessonId)) {
+    return "completed";
+  }
+
+  const firstUncompleted = LESSONS.find(
+    (lesson) => !completedLessons.includes(lesson.id)
+  );
+
+  if (firstUncompleted?.id === lessonId) {
+    return "current";
+  }
+
+  return "locked";
+}
+
+export function isLessonAccessible(
+  lessonId: number,
+  completedLessons: number[]
+): boolean {
+  return getLessonStatus(lessonId, completedLessons) !== "locked";
+}
+
 /** Get the suggested next lesson to work on */
 export function getNextUncompletedLesson(
   completedLessons: number[]
@@ -116,7 +147,15 @@ export function getNextUncompletedLesson(
  * Hook to get and manage completed lessons.
  * Uses TanStack Query for state management with localStorage persistence.
  */
-export function useCompletedLessons(): [number[], (lessonId: number) => void] {
+type MarkCompleteLesson = (lessonId: number) => Promise<number[]>;
+
+type UseCompletedLessonsResult = {
+  completedLessons: number[];
+  hasLoaded: boolean;
+  markComplete: MarkCompleteLesson;
+};
+
+export function useCompletedLessons(): UseCompletedLessonsResult {
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -151,7 +190,7 @@ export function useCompletedLessons(): [number[], (lessonId: number) => void] {
     };
   }, [queryClient]);
 
-  const { data: lessons } = useQuery({
+  const { data: lessons, status } = useQuery({
     queryKey: lessonProgressKeys.completedLessons,
     queryFn: getCompletedLessons,
     staleTime: 0,
@@ -170,53 +209,35 @@ export function useCompletedLessons(): [number[], (lessonId: number) => void] {
         cachedLessons ?? getCompletedLessons()
       );
       const newLessons = addCompletedLesson(currentLessons, lessonId);
-      setCompletedLessons(newLessons);
+      if (newLessons === currentLessons) {
+        return currentLessons;
+      }
+      if (!setCompletedLessons(newLessons)) {
+        throw new Error("Unable to persist completed lessons.");
+      }
       return newLessons;
     },
-    onMutate: async (lessonId) => {
-      await queryClient.cancelQueries({
-        queryKey: lessonProgressKeys.completedLessons,
-      });
-
-      const cachedLessons = queryClient.getQueryData<number[]>(
-        lessonProgressKeys.completedLessons
+    onError: () => {
+      queryClient.setQueryData(
+        lessonProgressKeys.completedLessons,
+        getCompletedLessons()
       );
-
-      const baseLessons = normalizeCompletedLessons(
-        cachedLessons ?? getCompletedLessons()
-      );
-      const newLessons = addCompletedLesson(baseLessons, lessonId);
-      queryClient.setQueryData(lessonProgressKeys.completedLessons, newLessons);
-
-      return { previousLessons: cachedLessons };
-    },
-    onError: (_err, _lessonId, context) => {
-      if (context?.previousLessons !== undefined) {
-        queryClient.setQueryData(
-          lessonProgressKeys.completedLessons,
-          normalizeCompletedLessons(context.previousLessons)
-        );
-      } else {
-        queryClient.invalidateQueries({
-          queryKey: lessonProgressKeys.completedLessons,
-        });
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({
-        queryKey: lessonProgressKeys.completedLessons,
-      });
     },
   });
 
-  const markComplete = useCallback(
+  const { mutateAsync } = mutation;
+  const markComplete = useCallback<MarkCompleteLesson>(
     (lessonId: number) => {
-      mutation.mutate(lessonId);
+      return mutateAsync(lessonId);
     },
-    [mutation]
+    [mutateAsync]
   );
 
-  return [lessons ?? [], markComplete];
+  return {
+    completedLessons: lessons ?? [],
+    hasLoaded: typeof window !== "undefined" && status === "success",
+    markComplete,
+  };
 }
 
 /**
@@ -228,7 +249,9 @@ export function markLessonComplete(lessonId: number): number[] {
   const completed = getCompletedLessons();
   const newLessons = addCompletedLesson(completed, lessonId);
   if (newLessons !== completed) {
-    setCompletedLessons(newLessons);
+    if (!setCompletedLessons(newLessons)) {
+      throw new Error("Unable to persist completed lessons.");
+    }
   }
   return newLessons;
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { motion } from "@/components/motion";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence, springs } from "@/components/motion";
 import {
   Bot,
   Key,
@@ -10,6 +11,13 @@ import {
   AlertTriangle,
   Database,
   Sparkles,
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Shield,
+  XCircle,
+  Server,
 } from "lucide-react";
 import {
   Section,
@@ -66,6 +74,10 @@ export function AgentsLoginLesson() {
             gradient="from-blue-500 to-indigo-500"
             delay={0.3}
           />
+        </div>
+
+        <div className="mt-8">
+          <InteractiveAgentComparison />
         </div>
       </Section>
 
@@ -145,8 +157,8 @@ export function AgentsLoginLesson() {
           {/* Gemini Login */}
           <LoginStep
             agent="Gemini CLI"
-            command="gemini"
-            description="Follow the prompts to authenticate with your Google account."
+            command='export GEMINI_API_KEY="your-gemini-api-key"'
+            description="Recommended on a headless VPS. Put the key in ~/.gemini/.env or your shell config, then run gemini."
             gradient="from-blue-500/10 to-indigo-500/10"
           />
         </div>
@@ -457,7 +469,7 @@ function CodexLoginSection() {
         </p>
         <ol className="list-decimal list-inside text-xs text-white/60 space-y-1 mb-2 pl-2">
           <li>On your laptop, create a tunnel</li>
-          <li>Then run <InlineCode>codex login</InlineCode> on VPS</li>
+          <li>Then run <InlineCode>codex login</InlineCode> on the VPS through that tunneled SSH session</li>
         </ol>
         <div className="rounded-xl bg-black/30 border border-white/[0.06] overflow-hidden">
           <pre className="p-3 text-xs font-mono text-emerald-400 overflow-x-auto">
@@ -472,7 +484,7 @@ function CodexLoginSection() {
       {/* Option 3: Standard */}
       <div>
         <p className="text-xs font-semibold text-white/60 mb-2">
-          Option 3: Standard (if you have a browser)
+          Option 3: Standard localhost callback (if you&apos;re not on a headless VPS)
         </p>
         <div className="rounded-xl bg-black/30 border border-white/[0.06] overflow-hidden">
           <pre className="p-3 text-sm font-mono text-emerald-400">
@@ -482,6 +494,973 @@ function CodexLoginSection() {
       </div>
     </motion.div>
   );
+}
+
+// =============================================================================
+// INTERACTIVE AGENT COMPARISON - Clickable agent selector with detail cards
+// =============================================================================
+
+type AgentId = "claude" | "codex" | "gemini";
+
+// =============================================================================
+// LIVE AGENT TERMINAL RACE - Interactive multi-scenario auth visualization
+// =============================================================================
+
+interface TerminalLine {
+  text: string;
+  type: "command" | "output" | "success" | "error" | "info" | "blank";
+  delay: number; // ms from scenario start
+}
+
+interface ScenarioAgent {
+  lines: TerminalLine[];
+  result: "success" | "fail";
+  finishDelay: number; // total ms to complete
+}
+
+interface Scenario {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  agents: {
+    claude: ScenarioAgent;
+    codex: ScenarioAgent;
+    gemini: ScenarioAgent;
+  };
+}
+
+const SCENARIOS: Scenario[] = [
+  {
+    id: "ssh-keygen",
+    title: "SSH Key Generation",
+    description: "Generate and register SSH keys for Git authentication",
+    icon: <Key className="h-4 w-4" />,
+    agents: {
+      claude: {
+        lines: [
+          { text: '$ claude "Generate SSH key for GitHub"', type: "command", delay: 0 },
+          { text: "Analyzing current SSH configuration...", type: "info", delay: 400 },
+          { text: '$ ssh-keygen -t ed25519 -C "user@dev"', type: "command", delay: 900 },
+          { text: "Generating public/private ed25519 key pair.", type: "output", delay: 1300 },
+          { text: "Your identification has been saved.", type: "output", delay: 1700 },
+          { text: "$ eval $(ssh-agent -s) && ssh-add ~/.ssh/id_ed25519", type: "command", delay: 2100 },
+          { text: "Identity added: /home/user/.ssh/id_ed25519", type: "success", delay: 2600 },
+          { text: "$ gh ssh-key add ~/.ssh/id_ed25519.pub", type: "command", delay: 3000 },
+          { text: "SSH key added to GitHub account.", type: "success", delay: 3500 },
+        ],
+        result: "success",
+        finishDelay: 3800,
+      },
+      codex: {
+        lines: [
+          { text: '$ codex "Set up SSH key for Git"', type: "command", delay: 0 },
+          { text: "$ ssh-keygen -t rsa -b 4096", type: "command", delay: 300 },
+          { text: "Generating public/private rsa key pair.", type: "output", delay: 700 },
+          { text: "Your identification has been saved.", type: "output", delay: 1100 },
+          { text: "$ cat ~/.ssh/id_rsa.pub", type: "command", delay: 1400 },
+          { text: "ssh-rsa AAAB3NzaC1yc2EAAAA...", type: "output", delay: 1700 },
+          { text: "Copy the above key to GitHub Settings.", type: "info", delay: 2000 },
+          { text: "Manual step required: paste key in browser", type: "error", delay: 2300 },
+        ],
+        result: "fail",
+        finishDelay: 2600,
+      },
+      gemini: {
+        lines: [
+          { text: '$ gemini "Create SSH keys for GitHub"', type: "command", delay: 0 },
+          { text: "Let me explain SSH key cryptography...", type: "info", delay: 500 },
+          { text: "Ed25519 uses Edwards-curve Digital Sig...", type: "info", delay: 1000 },
+          { text: '$ ssh-keygen -t ed25519 -C "user@dev"', type: "command", delay: 1600 },
+          { text: "Generating public/private ed25519 key pair.", type: "output", delay: 2000 },
+          { text: "$ eval $(ssh-agent -s)", type: "command", delay: 2500 },
+          { text: "Agent pid 12345", type: "output", delay: 2800 },
+          { text: "$ ssh-add ~/.ssh/id_ed25519", type: "command", delay: 3200 },
+          { text: "Identity added successfully.", type: "success", delay: 3600 },
+          { text: "Now add to GitHub via Settings > SSH...", type: "info", delay: 4000 },
+        ],
+        result: "success",
+        finishDelay: 4300,
+      },
+    },
+  },
+  {
+    id: "api-auth",
+    title: "API Key Authentication",
+    description: "Configure API keys and validate credentials",
+    icon: <Shield className="h-4 w-4" />,
+    agents: {
+      claude: {
+        lines: [
+          { text: '$ claude "Set up OpenAI API key"', type: "command", delay: 0 },
+          { text: "Checking environment configuration...", type: "info", delay: 400 },
+          { text: "$ echo 'export OPENAI_API_KEY=sk-...' >> ~/.bashrc", type: "command", delay: 800 },
+          { text: "$ source ~/.bashrc", type: "command", delay: 1200 },
+          { text: "Validating API key with test request...", type: "info", delay: 1600 },
+          { text: '$ curl -s api.openai.com/v1/models -H "Auth..."', type: "command", delay: 2000 },
+          { text: '{"data":[{"id":"gpt-4o"...}]}', type: "output", delay: 2500 },
+          { text: "API key validated. 47 models accessible.", type: "success", delay: 2900 },
+        ],
+        result: "success",
+        finishDelay: 3200,
+      },
+      codex: {
+        lines: [
+          { text: '$ codex "Configure my API keys"', type: "command", delay: 0 },
+          { text: "$ export OPENAI_API_KEY=sk-...", type: "command", delay: 250 },
+          { text: "$ python -c 'import openai; print(openai.Model.list())'", type: "command", delay: 600 },
+          { text: '{"data": [{"id": "gpt-4o"...}]}', type: "output", delay: 1000 },
+          { text: "API key is working. Done!", type: "success", delay: 1300 },
+        ],
+        result: "success",
+        finishDelay: 1600,
+      },
+      gemini: {
+        lines: [
+          { text: '$ gemini "Help me set up API auth"', type: "command", delay: 0 },
+          { text: "There are several auth approaches:", type: "info", delay: 500 },
+          { text: "1. Environment variables (recommended)", type: "info", delay: 900 },
+          { text: "2. Config files (~/.config/...)", type: "info", delay: 1200 },
+          { text: "3. Secret managers (Vault, AWS SM)", type: "info", delay: 1500 },
+          { text: "$ export OPENAI_API_KEY=sk-...", type: "command", delay: 2000 },
+          { text: "$ echo $OPENAI_API_KEY | head -c 8", type: "command", delay: 2400 },
+          { text: "sk-proj-... (key set successfully)", type: "success", delay: 2800 },
+        ],
+        result: "success",
+        finishDelay: 3100,
+      },
+    },
+  },
+  {
+    id: "oauth-flow",
+    title: "OAuth Browser Flow",
+    description: "Handle OAuth callbacks on a headless VPS",
+    icon: <Server className="h-4 w-4" />,
+    agents: {
+      claude: {
+        lines: [
+          { text: "$ claude auth login", type: "command", delay: 0 },
+          { text: "Opening browser for authentication...", type: "info", delay: 400 },
+          { text: "Waiting for OAuth callback...", type: "info", delay: 800 },
+          { text: "Visit: https://claude.ai/oauth/auth?...", type: "output", delay: 1200 },
+          { text: "Callback received on localhost:7771", type: "output", delay: 2200 },
+          { text: "Token exchange successful.", type: "success", delay: 2700 },
+          { text: "Logged in as user@example.com", type: "success", delay: 3100 },
+        ],
+        result: "success",
+        finishDelay: 3400,
+      },
+      codex: {
+        lines: [
+          { text: "$ codex login", type: "command", delay: 0 },
+          { text: "Opening browser for ChatGPT auth...", type: "info", delay: 300 },
+          { text: "Callback URL: http://localhost:1455", type: "output", delay: 700 },
+          { text: "Error: Connection refused on :1455", type: "error", delay: 1800 },
+          { text: "Headless VPS has no browser!", type: "error", delay: 2200 },
+          { text: "Hint: Use --device-auth or SSH tunnel", type: "info", delay: 2600 },
+          { text: "$ codex login --device-auth", type: "command", delay: 3000 },
+          { text: "Visit: https://chatgpt.com/device?code=ABCD-1234", type: "output", delay: 3400 },
+          { text: "Device authorized. Logged in!", type: "success", delay: 4400 },
+        ],
+        result: "success",
+        finishDelay: 4700,
+      },
+      gemini: {
+        lines: [
+          { text: '$ export GEMINI_API_KEY="AIza..."', type: "command", delay: 0 },
+          { text: "$ gemini", type: "command", delay: 500 },
+          { text: "Loaded auth from GEMINI_API_KEY", type: "info", delay: 900 },
+          { text: "Welcome to Gemini CLI!", type: "info", delay: 1300 },
+          { text: "Using Gemini API key for headless mode.", type: "success", delay: 1800 },
+          { text: "Ready to chat as user@gmail.com", type: "success", delay: 2400 },
+        ],
+        result: "success",
+        finishDelay: 2800,
+      },
+    },
+  },
+  {
+    id: "token-rotation",
+    title: "Token Rotation (caam)",
+    description: "Backup and rotate agent credentials with caam",
+    icon: <Database className="h-4 w-4" />,
+    agents: {
+      claude: {
+        lines: [
+          { text: "$ caam backup claude main-acct", type: "command", delay: 0 },
+          { text: "Backing up Claude credentials...", type: "info", delay: 400 },
+          { text: "Credentials saved to ~/.caam/claude/main-acct", type: "success", delay: 900 },
+          { text: "$ caam ls", type: "command", delay: 1300 },
+          { text: "claude: main-acct (active)", type: "output", delay: 1600 },
+          { text: "$ caam activate claude backup-acct", type: "command", delay: 2000 },
+          { text: "Switched Claude to backup-acct", type: "success", delay: 2500 },
+          { text: "Rate-limit bypassed! Ready to work.", type: "success", delay: 2900 },
+        ],
+        result: "success",
+        finishDelay: 3200,
+      },
+      codex: {
+        lines: [
+          { text: "$ caam backup codex main-acct", type: "command", delay: 0 },
+          { text: "Backing up Codex credentials...", type: "info", delay: 350 },
+          { text: "Credentials saved to ~/.caam/codex/main-acct", type: "success", delay: 800 },
+          { text: "$ caam activate codex alt-team-acct", type: "command", delay: 1200 },
+          { text: "Switched Codex to alt-team-acct", type: "success", delay: 1700 },
+          { text: "Ready with new credentials!", type: "success", delay: 2100 },
+        ],
+        result: "success",
+        finishDelay: 2400,
+      },
+      gemini: {
+        lines: [
+          { text: "$ caam backup gemini main-acct", type: "command", delay: 0 },
+          { text: "Backing up Gemini credentials...", type: "info", delay: 400 },
+          { text: "Credentials saved to ~/.caam/gemini/main-acct", type: "success", delay: 900 },
+          { text: "$ caam activate gemini work-acct", type: "command", delay: 1300 },
+          { text: "Switched Gemini to work-acct", type: "success", delay: 1800 },
+        ],
+        result: "success",
+        finishDelay: 2100,
+      },
+    },
+  },
+  {
+    id: "rate-limit",
+    title: "Rate Limit Recovery",
+    description: "Handle rate limiting by switching agent accounts",
+    icon: <AlertTriangle className="h-4 w-4" />,
+    agents: {
+      claude: {
+        lines: [
+          { text: '$ cc "Refactor the auth module"', type: "command", delay: 0 },
+          { text: "Error 429: Rate limit exceeded", type: "error", delay: 600 },
+          { text: "Retry after: 3600 seconds", type: "error", delay: 1000 },
+          { text: "$ caam activate claude backup-acct", type: "command", delay: 1500 },
+          { text: "Switched to backup-acct", type: "success", delay: 2000 },
+          { text: '$ cc "Refactor the auth module"', type: "command", delay: 2400 },
+          { text: "Analyzing auth module structure...", type: "info", delay: 2900 },
+          { text: "Refactoring complete! 12 files updated.", type: "success", delay: 3800 },
+        ],
+        result: "success",
+        finishDelay: 4100,
+      },
+      codex: {
+        lines: [
+          { text: '$ cod "Fix the login bug"', type: "command", delay: 0 },
+          { text: "Error: Rate limit hit (429)", type: "error", delay: 500 },
+          { text: "No backup accounts configured!", type: "error", delay: 900 },
+          { text: "$ caam ls", type: "command", delay: 1300 },
+          { text: "codex: main-acct (active) - no backups", type: "error", delay: 1700 },
+          { text: "Must wait 1 hour or add backup account.", type: "error", delay: 2100 },
+        ],
+        result: "fail",
+        finishDelay: 2400,
+      },
+      gemini: {
+        lines: [
+          { text: '$ gmi "Update the documentation"', type: "command", delay: 0 },
+          { text: "Processing request...", type: "info", delay: 400 },
+          { text: "Error: Quota exceeded for gemini-pro", type: "error", delay: 1000 },
+          { text: "$ caam activate gemini work-acct", type: "command", delay: 1500 },
+          { text: "Switched to work-acct", type: "success", delay: 2000 },
+          { text: '$ gmi "Update the documentation"', type: "command", delay: 2400 },
+          { text: "Documentation updated across 8 files.", type: "success", delay: 3400 },
+        ],
+        result: "success",
+        finishDelay: 3700,
+      },
+    },
+  },
+  {
+    id: "multi-agent",
+    title: "Multi-Agent Workflow",
+    description: "Use all three agents on different parts of a project",
+    icon: <Sparkles className="h-4 w-4" />,
+    agents: {
+      claude: {
+        lines: [
+          { text: '$ cc "Architect the new payment module"', type: "command", delay: 0 },
+          { text: "Planning module structure...", type: "info", delay: 500 },
+          { text: "Created: src/payments/types.ts", type: "output", delay: 1200 },
+          { text: "Created: src/payments/processor.ts", type: "output", delay: 1800 },
+          { text: "Created: src/payments/validator.ts", type: "output", delay: 2400 },
+          { text: "Created: src/payments/index.ts", type: "output", delay: 2800 },
+          { text: "Architecture complete: 4 files, 380 lines", type: "success", delay: 3400 },
+        ],
+        result: "success",
+        finishDelay: 3700,
+      },
+      codex: {
+        lines: [
+          { text: '$ cod "Write tests for payments module"', type: "command", delay: 0 },
+          { text: "Scanning payment module exports...", type: "info", delay: 300 },
+          { text: "$ touch src/payments/__tests__/processor.test.ts", type: "command", delay: 600 },
+          { text: "Writing 24 test cases...", type: "info", delay: 1000 },
+          { text: "$ bun test src/payments/", type: "command", delay: 1800 },
+          { text: "24 passed, 0 failed (1.2s)", type: "success", delay: 2400 },
+        ],
+        result: "success",
+        finishDelay: 2700,
+      },
+      gemini: {
+        lines: [
+          { text: '$ gmi "Document the payments module"', type: "command", delay: 0 },
+          { text: "Analyzing module public API...", type: "info", delay: 500 },
+          { text: "Generating JSDoc annotations...", type: "info", delay: 1100 },
+          { text: "Created: docs/payments-guide.md", type: "output", delay: 1800 },
+          { text: "Updated: README.md with API section", type: "output", delay: 2400 },
+          { text: "Added: inline docs to all exports", type: "output", delay: 3000 },
+          { text: "Documentation complete! Coverage: 100%", type: "success", delay: 3600 },
+        ],
+        result: "success",
+        finishDelay: 3900,
+      },
+    },
+  },
+];
+
+const AGENT_COLORS = {
+  claude: {
+    text: "text-orange-400",
+    bg: "bg-orange-500",
+    bgFaint: "bg-orange-500/10",
+    border: "border-orange-500/30",
+    glow: "shadow-orange-500/20",
+    hex: "#f97316",
+  },
+  codex: {
+    text: "text-emerald-400",
+    bg: "bg-emerald-500",
+    bgFaint: "bg-emerald-500/10",
+    border: "border-emerald-500/30",
+    glow: "shadow-emerald-500/20",
+    hex: "#10b981",
+  },
+  gemini: {
+    text: "text-blue-400",
+    bg: "bg-blue-500",
+    bgFaint: "bg-blue-500/10",
+    border: "border-blue-500/30",
+    glow: "shadow-blue-500/20",
+    hex: "#3b82f6",
+  },
+} as const;
+
+// Particle type for auth success effect
+interface Particle {
+  id: number;
+  x: number;
+  y: number;
+  angle: number;
+  speed: number;
+  life: number;
+  color: string;
+}
+
+function InteractiveAgentComparison() {
+  const [scenarioIndex, setScenarioIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [visibleLines, setVisibleLines] = useState<Record<AgentId, number>>({
+    claude: 0,
+    codex: 0,
+    gemini: 0,
+  });
+  const [agentDone, setAgentDone] = useState<Record<AgentId, boolean>>({
+    claude: false,
+    codex: false,
+    gemini: false,
+  });
+  const [particles, setParticles] = useState<Particle[]>([]);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const particleIdRef = useRef(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const scenario = SCENARIOS[scenarioIndex];
+
+  const clearTimers = useCallback(() => {
+    for (const t of timersRef.current) clearTimeout(t);
+    timersRef.current = [];
+  }, []);
+
+  const resetState = useCallback(() => {
+    clearTimers();
+    setVisibleLines({ claude: 0, codex: 0, gemini: 0 });
+    setAgentDone({ claude: false, codex: false, gemini: false });
+    setParticles([]);
+    setIsPlaying(false);
+  }, [clearTimers]);
+
+  const spawnParticles = useCallback((agentKey: AgentId) => {
+    const count = 8;
+    const newParticles: Particle[] = [];
+    const color = AGENT_COLORS[agentKey].hex;
+    for (let i = 0; i < count; i++) {
+      particleIdRef.current += 1;
+      newParticles.push({
+        id: particleIdRef.current,
+        x: agentKey === "claude" ? 17 : agentKey === "codex" ? 50 : 83,
+        y: 50,
+        angle: (Math.PI * 2 * i) / count + Math.random() * 0.5,
+        speed: 2 + Math.random() * 3,
+        life: 1,
+        color,
+      });
+    }
+    setParticles((prev) => [...prev, ...newParticles]);
+    // Decay particles
+    const decayTimer = setTimeout(() => {
+      setParticles((prev) =>
+        prev.filter((p) => !newParticles.some((np) => np.id === p.id))
+      );
+    }, 1200);
+    timersRef.current.push(decayTimer);
+  }, []);
+
+  const playScenario = useCallback(
+    (sc: Scenario) => {
+      clearTimers();
+      setVisibleLines({ claude: 0, codex: 0, gemini: 0 });
+      setAgentDone({ claude: false, codex: false, gemini: false });
+      setParticles([]);
+      setIsPlaying(true);
+
+      const agentKeys: AgentId[] = ["claude", "codex", "gemini"];
+
+      for (const agentKey of agentKeys) {
+        const agentScenario = sc.agents[agentKey];
+        for (let i = 0; i < agentScenario.lines.length; i++) {
+          const line = agentScenario.lines[i];
+          const timer = setTimeout(() => {
+            setVisibleLines((prev) => ({
+              ...prev,
+              [agentKey]: i + 1,
+            }));
+          }, line.delay + 300);
+          timersRef.current.push(timer);
+        }
+
+        // Mark done
+        const doneTimer = setTimeout(() => {
+          setAgentDone((prev) => ({ ...prev, [agentKey]: true }));
+          if (agentScenario.result === "success") {
+            spawnParticles(agentKey);
+          }
+        }, agentScenario.finishDelay + 300);
+        timersRef.current.push(doneTimer);
+      }
+
+      // Auto-stop playing after longest agent finishes
+      const maxDelay = Math.max(
+        ...agentKeys.map((k) => sc.agents[k].finishDelay)
+      );
+      const stopTimer = setTimeout(() => {
+        setIsPlaying(false);
+      }, maxDelay + 800);
+      timersRef.current.push(stopTimer);
+    },
+    [clearTimers, spawnParticles]
+  );
+
+  const handlePlay = useCallback(() => {
+    if (isPlaying) {
+      resetState();
+    } else {
+      playScenario(scenario);
+    }
+  }, [isPlaying, resetState, playScenario, scenario]);
+
+  const handlePrev = useCallback(() => {
+    resetState();
+    setScenarioIndex((prev) => (prev > 0 ? prev - 1 : SCENARIOS.length - 1));
+  }, [resetState]);
+
+  const handleNext = useCallback(() => {
+    resetState();
+    setScenarioIndex((prev) => (prev < SCENARIOS.length - 1 ? prev + 1 : 0));
+  }, [resetState]);
+
+  // Clean up timers on unmount
+  useEffect(() => {
+    const captured = timersRef.current;
+    return () => {
+      for (const t of captured) clearTimeout(t);
+    };
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      className="rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl overflow-hidden"
+    >
+      {/* Header */}
+      <div className="px-6 pt-6 pb-4">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20">
+            <Terminal className="h-4 w-4 text-primary" />
+          </div>
+          <h3 className="text-lg font-bold text-white">
+            Agent Authentication Race
+          </h3>
+        </div>
+        <p className="text-sm text-white/50">
+          Watch how each agent handles real authentication scenarios
+        </p>
+      </div>
+
+      {/* Scenario stepper */}
+      <div className="px-6 pb-4">
+        <div className="flex items-center gap-2 mb-3">
+          {SCENARIOS.map((sc, i) => (
+            <motion.button
+              key={sc.id}
+              onClick={() => {
+                resetState();
+                setScenarioIndex(i);
+              }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              transition={springs.snappy}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                i === scenarioIndex
+                  ? "bg-primary/20 border border-primary/30 text-primary"
+                  : "border border-white/[0.08] bg-white/[0.02] text-white/40 hover:text-white/60"
+              }`}
+            >
+              {sc.icon}
+              <span className="hidden sm:inline">{sc.title}</span>
+              <span className="sm:hidden">{i + 1}</span>
+            </motion.button>
+          ))}
+        </div>
+
+        {/* Scenario info + controls */}
+        <div className="flex items-center justify-between">
+          <div>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={scenario.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                transition={springs.snappy}
+              >
+                <h4 className="text-sm font-semibold text-white">
+                  {scenario.title}
+                </h4>
+                <p className="text-xs text-white/40">{scenario.description}</p>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          {/* Playback controls */}
+          <div className="flex items-center gap-2">
+            <motion.button
+              onClick={handlePrev}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              transition={springs.snappy}
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.02] text-white/50 hover:text-white/80 transition-colors"
+            >
+              <SkipBack className="h-3.5 w-3.5" />
+            </motion.button>
+            <motion.button
+              onClick={handlePlay}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              transition={springs.snappy}
+              className={`flex h-10 w-10 items-center justify-center rounded-xl border transition-colors ${
+                isPlaying
+                  ? "border-amber-500/30 bg-amber-500/20 text-amber-400"
+                  : "border-primary/30 bg-primary/20 text-primary"
+              }`}
+            >
+              {isPlaying ? (
+                <Pause className="h-4 w-4" />
+              ) : (
+                <Play className="h-4 w-4 ml-0.5" />
+              )}
+            </motion.button>
+            <motion.button
+              onClick={handleNext}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              transition={springs.snappy}
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.02] text-white/50 hover:text-white/80 transition-colors"
+            >
+              <SkipForward className="h-3.5 w-3.5" />
+            </motion.button>
+          </div>
+        </div>
+      </div>
+
+      {/* SVG connection visualization */}
+      <div className="relative px-6 pb-2">
+        <svg
+          viewBox="0 0 600 80"
+          className="w-full h-auto"
+          preserveAspectRatio="xMidYMid meet"
+        >
+          {/* Central auth server */}
+          <rect
+            x="262"
+            y="8"
+            width="76"
+            height="32"
+            rx="8"
+            className="fill-white/[0.04] stroke-white/[0.12]"
+            strokeWidth="1"
+          />
+          <text
+            x="300"
+            y="22"
+            textAnchor="middle"
+            className="fill-white/60 text-[8px] font-bold"
+          >
+            AUTH
+          </text>
+          <text
+            x="300"
+            y="33"
+            textAnchor="middle"
+            className="fill-white/40 text-[7px]"
+          >
+            SERVER
+          </text>
+
+          {/* Connection lines with animation */}
+          {(["claude", "codex", "gemini"] as AgentId[]).map((agentKey, i) => {
+            const startX = i === 0 ? 100 : i === 1 ? 300 : 500;
+            const isDone = agentDone[agentKey];
+            const isSuccess =
+              isDone && scenario.agents[agentKey].result === "success";
+            const isFail =
+              isDone && scenario.agents[agentKey].result === "fail";
+            const color = isSuccess
+              ? AGENT_COLORS[agentKey].hex
+              : isFail
+                ? "#ef4444"
+                : "rgba(255,255,255,0.08)";
+
+            return (
+              <g key={agentKey}>
+                {/* Line from agent to server */}
+                <line
+                  x1={startX}
+                  y1={68}
+                  x2={300}
+                  y2={40}
+                  stroke={color}
+                  strokeWidth={isDone ? 2 : 1}
+                  strokeDasharray={isDone ? "none" : "4 4"}
+                  opacity={isDone ? 0.8 : 0.3}
+                >
+                  {isPlaying && !isDone && (
+                    <animate
+                      attributeName="stroke-dashoffset"
+                      from="8"
+                      to="0"
+                      dur="0.6s"
+                      repeatCount="indefinite"
+                    />
+                  )}
+                </line>
+
+                {/* Data flow pulse dot */}
+                {isPlaying && !isDone && (
+                  <circle r="3" fill={AGENT_COLORS[agentKey].hex} opacity="0.6">
+                    <animateMotion
+                      dur="1.5s"
+                      repeatCount="indefinite"
+                      path={`M${startX},68 L300,40`}
+                    />
+                  </circle>
+                )}
+
+                {/* Success/fail indicator at agent */}
+                {isDone && (
+                  <circle
+                    cx={startX}
+                    cy={68}
+                    r="5"
+                    fill={isSuccess ? "#22c55e" : "#ef4444"}
+                    opacity="0.8"
+                  >
+                    <animate
+                      attributeName="r"
+                      values="5;7;5"
+                      dur="1.5s"
+                      repeatCount="indefinite"
+                    />
+                  </circle>
+                )}
+
+                {/* Agent label */}
+                <text
+                  x={startX}
+                  y={78}
+                  textAnchor="middle"
+                  className={`text-[7px] font-medium`}
+                  fill={AGENT_COLORS[agentKey].hex}
+                  opacity={0.7}
+                >
+                  {agentKey === "claude"
+                    ? "Claude"
+                    : agentKey === "codex"
+                      ? "Codex"
+                      : "Gemini"}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Particle effects */}
+          {particles.map((p) => (
+            <circle
+              key={p.id}
+              cx={`${p.x}%`}
+              cy={`${p.y}%`}
+              r="2"
+              fill={p.color}
+              opacity={p.life * 0.8}
+            >
+              <animate
+                attributeName="cx"
+                from={`${p.x}%`}
+                to={`${p.x + Math.cos(p.angle) * p.speed * 8}%`}
+                dur="1s"
+                fill="freeze"
+              />
+              <animate
+                attributeName="cy"
+                from={`${p.y}%`}
+                to={`${p.y + Math.sin(p.angle) * p.speed * 8}%`}
+                dur="1s"
+                fill="freeze"
+              />
+              <animate
+                attributeName="opacity"
+                from="0.8"
+                to="0"
+                dur="1s"
+                fill="freeze"
+              />
+              <animate
+                attributeName="r"
+                from="3"
+                to="0"
+                dur="1s"
+                fill="freeze"
+              />
+            </circle>
+          ))}
+        </svg>
+      </div>
+
+      {/* Terminal panels */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-0 md:gap-px bg-white/[0.04]">
+        {(["claude", "codex", "gemini"] as AgentId[]).map((agentKey) => (
+          <AgentTerminalPanel
+            key={`${scenario.id}-${agentKey}`}
+            agentKey={agentKey}
+            agentScenario={scenario.agents[agentKey]}
+            visibleCount={visibleLines[agentKey]}
+            isDone={agentDone[agentKey]}
+            isPlaying={isPlaying}
+          />
+        ))}
+      </div>
+
+      {/* Scenario progress dots */}
+      <div className="flex items-center justify-center gap-2 py-4 bg-black/20">
+        {SCENARIOS.map((_, i) => (
+          <motion.button
+            key={i}
+            onClick={() => {
+              resetState();
+              setScenarioIndex(i);
+            }}
+            whileHover={{ scale: 1.3 }}
+            transition={springs.snappy}
+            className={`h-2 rounded-full transition-all duration-300 ${
+              i === scenarioIndex
+                ? "w-6 bg-primary"
+                : "w-2 bg-white/20 hover:bg-white/40"
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// AGENT TERMINAL PANEL - Individual terminal with typing animation
+// =============================================================================
+function AgentTerminalPanel({
+  agentKey,
+  agentScenario,
+  visibleCount,
+  isDone,
+  isPlaying,
+}: {
+  agentKey: AgentId;
+  agentScenario: ScenarioAgent;
+  visibleCount: number;
+  isDone: boolean;
+  isPlaying: boolean;
+}) {
+  const colors = AGENT_COLORS[agentKey];
+  const terminalRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll terminal to bottom
+  useEffect(() => {
+    if (terminalRef.current) {
+      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+    }
+  }, [visibleCount]);
+
+  const agentLabel =
+    agentKey === "claude"
+      ? "Claude Code"
+      : agentKey === "codex"
+        ? "Codex CLI"
+        : "Gemini CLI";
+
+  return (
+    <div className="bg-black/40 flex flex-col">
+      {/* Terminal header */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.06]">
+        <div className="flex items-center gap-2">
+          <div className={`h-2.5 w-2.5 rounded-full ${colors.bg}`} />
+          <span className={`text-xs font-semibold ${colors.text}`}>
+            {agentLabel}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          {isDone ? (
+            agentScenario.result === "success" ? (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={springs.snappy}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30"
+              >
+                <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                <span className="text-[10px] font-medium text-emerald-400">
+                  PASS
+                </span>
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={springs.snappy}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/20 border border-red-500/30"
+              >
+                <XCircle className="h-3 w-3 text-red-400" />
+                <span className="text-[10px] font-medium text-red-400">
+                  FAIL
+                </span>
+              </motion.div>
+            )
+          ) : isPlaying ? (
+            <div className="flex items-center gap-1">
+              <motion.div
+                className={`h-1.5 w-1.5 rounded-full ${colors.bg}`}
+                animate={{ opacity: [0.3, 1, 0.3] }}
+                transition={{ duration: 1, repeat: Infinity }}
+              />
+              <span className="text-[10px] text-white/30">running</span>
+            </div>
+          ) : (
+            <span className="text-[10px] text-white/20">idle</span>
+          )}
+        </div>
+      </div>
+
+      {/* Terminal body */}
+      <div
+        ref={terminalRef}
+        className="px-3 py-2 font-mono text-[11px] leading-relaxed min-h-[180px] max-h-[220px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/10"
+      >
+        {visibleCount === 0 && !isPlaying && (
+          <div className="flex items-center justify-center h-full min-h-[160px] text-white/20">
+            <span className="text-xs">Press play to start</span>
+          </div>
+        )}
+        <AnimatePresence>
+          {agentScenario.lines.slice(0, visibleCount).map((line, i) => (
+            <motion.div
+              key={`${agentKey}-line-${i}`}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.15 }}
+              className={`py-0.5 ${getLineColor(line.type)}`}
+            >
+              {line.type === "command" && (
+                <span className="text-white/30 select-none">
+                  {line.text.startsWith("$") ? "" : "$ "}
+                </span>
+              )}
+              <span>{line.text}</span>
+              {line.type === "success" && (
+                <span className="ml-1 inline-block">
+                  <CheckCircle2 className="h-3 w-3 inline text-emerald-400" />
+                </span>
+              )}
+              {line.type === "error" && (
+                <span className="ml-1 inline-block">
+                  <XCircle className="h-3 w-3 inline text-red-400" />
+                </span>
+              )}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+
+        {/* Blinking cursor while running */}
+        {isPlaying && !isDone && visibleCount > 0 && (
+          <motion.span
+            className={`inline-block w-1.5 h-3.5 ${colors.bg} ml-0.5`}
+            animate={{ opacity: [1, 0, 1] }}
+            transition={{ duration: 0.8, repeat: Infinity }}
+          />
+        )}
+      </div>
+
+      {/* Terminal footer - timing */}
+      <div className="px-3 py-1.5 border-t border-white/[0.04] flex items-center justify-between">
+        <span className="text-[10px] text-white/20">
+          {visibleCount}/{agentScenario.lines.length} steps
+        </span>
+        {isDone && (
+          <motion.span
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-[10px] text-white/30"
+          >
+            {(agentScenario.finishDelay / 1000).toFixed(1)}s
+          </motion.span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function getLineColor(type: TerminalLine["type"]): string {
+  switch (type) {
+    case "command":
+      return "text-white/90";
+    case "output":
+      return "text-white/50";
+    case "success":
+      return "text-emerald-400";
+    case "error":
+      return "text-red-400";
+    case "info":
+      return "text-blue-300/70";
+    case "blank":
+      return "";
+  }
 }
 
 // =============================================================================
@@ -513,7 +1492,7 @@ function OpenAIAccountWarning() {
             </h5>
             <ul className="space-y-1 text-xs text-white/60">
               <li>• For Codex CLI, ChatGPT web</li>
-              <li>• Auth via OAuth ({`\`codex login\``})</li>
+              <li>• Auth via ChatGPT login ({`\`codex login --device-auth\``} is recommended on a VPS)</li>
               <li>
                 • Get at{" "}
                 <span className="text-primary">chat.openai.com</span>

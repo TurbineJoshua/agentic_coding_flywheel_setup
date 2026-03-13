@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion } from "@/components/motion";
 import {
   Check,
@@ -15,6 +15,7 @@ import {
   CodeBlock as SharedCodeBlock,
   type CodeBlockProps as SharedCodeBlockProps,
 } from "@/components/ui/code-block";
+import { copyTextToClipboard } from "@/lib/utils";
 
 // =============================================================================
 // SECTION COMPONENT - Beautiful section dividers with gradient headers
@@ -207,15 +208,29 @@ interface CommandListProps {
 
 export function CommandList({ commands }: CommandListProps) {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current) {
+        clearTimeout(copyTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleCopy = async (command: string, index: number) => {
-    try {
-      await navigator.clipboard.writeText(command);
-      setCopiedIndex(index);
-      setTimeout(() => setCopiedIndex(null), 2000);
-    } catch {
-      // Clipboard access denied - silently fail
+    const copiedOk = await copyTextToClipboard(command);
+    if (!copiedOk) {
+      return;
     }
+    if (copyTimerRef.current) {
+      clearTimeout(copyTimerRef.current);
+    }
+    setCopiedIndex(index);
+    copyTimerRef.current = setTimeout(() => {
+      setCopiedIndex(null);
+      copyTimerRef.current = null;
+    }, 2000);
   };
 
   return (

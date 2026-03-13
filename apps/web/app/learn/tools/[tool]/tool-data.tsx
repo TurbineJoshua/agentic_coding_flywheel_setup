@@ -19,6 +19,7 @@ import {
   Wrench,
   Zap,
 } from "lucide-react";
+import { getManifestCommand } from "@/lib/manifest-adapter";
 
 export type ToolId =
   | "claude-code"
@@ -61,7 +62,57 @@ export type ToolCard = {
   relatedTools: ToolId[];
 };
 
-export const TOOLS: Record<ToolId, ToolCard> = {
+const manifestShortIdByToolId: Partial<Record<ToolId, string>> = {
+  ntm: "ntm",
+  beads: "br",
+  "agent-mail": "mail",
+  ubs: "ubs",
+  cass: "cass",
+  cm: "cm",
+  caam: "caam",
+  slb: "slb",
+  dcg: "dcg",
+  ru: "ru",
+  ms: "ms",
+  apr: "apr",
+  jfp: "jfp",
+  pt: "pt",
+  srps: "srps",
+  xf: "xf",
+  rch: "rch",
+  fsfs: "fsfs",
+  sbh: "sbh",
+  casr: "casr",
+  dsr: "dsr",
+  asb: "asb",
+  pcr: "pcr",
+};
+
+function withCanonicalManifestMetadata(
+  tools: Record<ToolId, ToolCard>
+): Record<ToolId, ToolCard> {
+  return Object.fromEntries(
+    Object.entries(tools).map(([toolId, tool]) => {
+      const shortId = manifestShortIdByToolId[toolId as ToolId];
+      const manifest = shortId ? getManifestCommand(shortId) : undefined;
+
+      if (!manifest) {
+        return [toolId, tool];
+      }
+
+      return [
+        toolId,
+        {
+          ...tool,
+          docsUrl: manifest.docsUrl ?? tool.docsUrl,
+          quickCommand: manifest.commandExample ?? tool.quickCommand,
+        },
+      ];
+    })
+  ) as Record<ToolId, ToolCard>;
+}
+
+const RAW_TOOLS: Record<ToolId, ToolCard> = {
   "claude-code": {
     id: "claude-code",
     title: "Claude Code",
@@ -105,7 +156,7 @@ export const TOOLS: Record<ToolId, ToolCard> = {
     icon: <LayoutGrid className="h-8 w-8" aria-hidden="true" />,
     gradient: "from-sky-500/20 via-blue-500/20 to-sky-500/20",
     glowColor: "rgba(56,189,248,0.4)",
-    docsUrl: "https://github.com/Dicklesworthstone/named_tmux_manager",
+    docsUrl: "https://github.com/Dicklesworthstone/ntm",
     docsLabel: "GitHub",
     quickCommand: "ntm spawn myproject --cc=2",
     relatedTools: ["claude-code", "codex-cli", "agent-mail"],
@@ -368,8 +419,12 @@ export const TOOLS: Record<ToolId, ToolCard> = {
     glowColor: "rgba(220,38,38,0.4)",
     docsUrl: "https://github.com/Dicklesworthstone/post_compact_reminder",
     docsLabel: "GitHub",
+    quickCommand:
+      'printf \'{"session_id":"demo","source":"compact"}\\n\' | claude-post-compact-reminder',
     relatedTools: ["dcg", "claude-code", "slb"],
   },
 };
+
+export const TOOLS = withCanonicalManifestMetadata(RAW_TOOLS);
 
 export const TOOL_IDS = Object.keys(TOOLS) as ToolId[];
