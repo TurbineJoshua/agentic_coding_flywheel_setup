@@ -366,8 +366,11 @@ def sanitize_value:
         gsub("AKIA[A-Z0-9]{16}"; "[REDACTED]") |
         gsub("hf_[a-zA-Z0-9]{34}"; "[REDACTED]") |
         gsub("[rs]k_(live|test)_[a-zA-Z0-9]{24,}"; "[REDACTED]") |
-        # Fallback for inline key=value pairs in strings
-        gsub("(?i)(password|secret|api_key|apikey|auth_token|access_token)[\"\\s:=]+[\"']?[^\\s\"'\\}\\]\\),;\\[]{8,}[\"']?"; "\\1=[REDACTED]")
+        # Fallback for inline key=value pairs in strings.
+        # Since jq gsub doesn't support backreferences in the replacement string,
+        # we use a capture-and-replace approach or just redact the whole match.
+        # Redacting the whole match is safer for security.
+        gsub("(?i)(password|secret|api_key|apikey|auth_token|access_token)[\"\\s:=]+[\"']?[^\\s\"'\\}\\]\\),;\\[]{8,}[\"']?"; "[SECRET_REDACTED]")
 JQ_BASE
 
     local jq_filter_optional=""
@@ -1032,7 +1035,7 @@ parse_native_codex_to_canonical() {
                     }
                 elif (.type == "response_item") then
                     {
-                        role: (if ((.payload.role? // "assistant") == "user") then "user" else "assistant" end),
+                        role: (if ((.payload.role? // "assistant") | ascii_downcase) == "user" then "user" else "assistant" end),
                         content: ((.payload.content? // "") | flatten_content),
                         timestamp: (.timestamp? // "")
                     }
@@ -1729,6 +1732,11 @@ import_session() {
     if [[ -z "$file" ]]; then
         log_error "Session file required"
         log_info "Usage: import_session <file.json> [--dry-run]"
+        return 1
+    fi
+
+    if [[ ! -f "$file" ]]; then
+        log_error "File not found: $file"
         return 1
     fi
 

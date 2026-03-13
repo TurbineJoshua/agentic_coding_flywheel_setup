@@ -225,11 +225,12 @@ github_fetch_with_backoff() {
             return 0
         fi
 
-        # Parse rate limit headers
+        # Parse rate limit headers.
+        # Note: Use tail -1 to get headers from the final response in case of redirects.
         local rate_remaining="" rate_reset=""
         if [[ -r "$tmp_headers" ]]; then
-            rate_remaining=$(grep -i "^x-ratelimit-remaining:" "$tmp_headers" 2>/dev/null | cut -d: -f2 | tr -d ' \r\n')
-            rate_reset=$(grep -i "^x-ratelimit-reset:" "$tmp_headers" 2>/dev/null | cut -d: -f2 | tr -d ' \r\n')
+            rate_remaining=$(grep -i "^x-ratelimit-remaining:" "$tmp_headers" 2>/dev/null | tail -n 1 | cut -d: -f2- | tr -d ' \r\n')
+            rate_reset=$(grep -i "^x-ratelimit-reset:" "$tmp_headers" 2>/dev/null | tail -n 1 | cut -d: -f2- | tr -d ' \r\n')
         fi
 
         # Check if this is a rate limit error
@@ -314,10 +315,14 @@ github_get_latest_release() {
     trap "rm -f '$tmp_response'" RETURN
 
     if github_api_fetch "/repos/$repo/releases/latest" "$tmp_response"; then
-        # Extract tag_name from JSON (simple grep, no jq dependency)
-        grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' "$tmp_response" \
-            | head -1 \
-            | sed 's/.*"\([^"]*\)"$/\1/'
+        # Use jq for robust parsing if available, fall back to grep/sed
+        if command -v jq &>/dev/null; then
+            jq -r '.tag_name // empty' "$tmp_response"
+        else
+            grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' "$tmp_response" \
+                | head -1 \
+                | sed 's/.*"\([^"]*\)"$/\1/'
+        fi
     fi
 }
 

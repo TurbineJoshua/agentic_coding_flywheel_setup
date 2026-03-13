@@ -225,9 +225,14 @@ migrate_ssh_keys() {
         fi
 
         # Ensure target file ends with a newline before appending.
-        if $SUDO bash -c "[[ -s \"$target_keys\" ]] && [[ -n \"\$(tail -c 1 \"$target_keys\")\" ]]"; then
-            # File has content and last char is not newline
-            printf '\n' | $SUDO tee -a "$target_keys" >/dev/null
+        # We use a robust check that handles files without any newlines at all.
+        if [[ -s "$target_keys" ]]; then
+            local last_char
+            last_char=$(tail -c 1 "$target_keys" | od -An -t u1 | tr -d ' ')
+            if [[ "$last_char" != "10" ]]; then
+                # Last char is not \n (ASCII 10)
+                printf '\n' | $SUDO tee -a "$target_keys" >/dev/null
+            fi
         fi
 
         if ! printf '%s\n' "$line" | $SUDO tee -a "$target_keys" >/dev/null; then

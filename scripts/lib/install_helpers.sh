@@ -627,10 +627,14 @@ if ! declare -f run_as_target >/dev/null 2>&1; then
         [[ -n "${SCRIPT_DIR:-}" ]] && env_args+=("SCRIPT_DIR=$SCRIPT_DIR")
         [[ -n "${ACFS_RAW:-}" ]] && env_args+=("ACFS_RAW=$ACFS_RAW")
         [[ -n "${ACFS_VERSION:-}" ]] && env_args+=("ACFS_VERSION=$ACFS_VERSION")
+        [[ -n "${ACFS_REF:-}" ]] && env_args+=("ACFS_REF=$ACFS_REF")
 
         # Already the target user
         if [[ "$(whoami)" == "$user" ]]; then
-            cd "$user_home" 2>/dev/null || true
+            # Use explicit home path to avoid ambiguity if $HOME was mutated.
+            if [[ -d "$user_home" ]]; then
+                cd "$user_home" || return 1
+            fi
             env "${env_args[@]}" "$@"
             return $?
         fi
@@ -638,14 +642,15 @@ if ! declare -f run_as_target >/dev/null 2>&1; then
         # Prefer sudo (non-login) when available.
         if command_exists sudo; then
             # shellcheck disable=SC2016  # $HOME/$@ expand inside sh -c
-            sudo -u "$user" env "${env_args[@]}" sh -c 'cd "$HOME" 2>/dev/null; exec "$@"' _ "$@"
+            # Use sh -c to ensure the cd happens as the target user.
+            sudo -u "$user" env "${env_args[@]}" sh -c 'cd "$HOME" || exit 1; exec "$@"' _ "$@"
             return $?
         fi
 
         # Root-only fallbacks.
         if command_exists runuser; then
             # shellcheck disable=SC2016  # $HOME/$@ expand inside sh -c
-            runuser -u "$user" -- env "${env_args[@]}" sh -c 'cd "$HOME" 2>/dev/null; exec "$@"' _ "$@"
+            runuser -u "$user" -- env "${env_args[@]}" sh -c 'cd "$HOME" || exit 1; exec "$@"' _ "$@"
             return $?
         fi
 
