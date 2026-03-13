@@ -29,6 +29,14 @@ export function getManifestCommandByCliName(name: string): ManifestCommand | und
 }
 
 export function getManifestCommandDocsUrl(moduleId: string): string | undefined {
+  switch (moduleId) {
+    case "stack.ntm":
+      return "/learn/tools/ntm";
+    case "stack.beads_rust":
+    case "stack.beads_viewer":
+      return "/learn/tools/beads";
+  }
+
   const lessonSlug = lessonSlugByModuleId[moduleId];
   if (lessonSlug) {
     return `/learn/tools/${lessonSlug}`;
@@ -105,7 +113,7 @@ export const COMMANDS: CommandRef[] = [
     category: "agents",
     example: 'cc "fix the auth bug in auth.ts"',
     aliases: ["claude"],
-    docsUrl: "/learn/agent-commands",
+    docsUrl: "/learn/tools/claude-code",
   },
   {
     name: "cod",
@@ -114,7 +122,7 @@ export const COMMANDS: CommandRef[] = [
     category: "agents",
     example: 'cod "add tests for utils.ts"',
     aliases: ["codex"],
-    docsUrl: "/learn/agent-commands",
+    docsUrl: "/learn/tools/codex-cli",
   },
   {
     name: "gmi",
@@ -123,7 +131,7 @@ export const COMMANDS: CommandRef[] = [
     category: "agents",
     example: 'gmi "review this PR"',
     aliases: ["gemini"],
-    docsUrl: "/learn/agent-commands",
+    docsUrl: "/learn/tools/gemini-cli",
   },
   {
     name: "rg",
@@ -176,7 +184,7 @@ export const COMMANDS: CommandRef[] = [
     description: "Session management for agents and workflows.",
     category: "stack",
     example: "ntm new acfs",
-    docsUrl: "/learn/ntm-palette",
+    docsUrl: "/learn/tools/ntm",
   },
   {
     name: "tmux",
@@ -236,7 +244,7 @@ export const COMMANDS: CommandRef[] = [
     description: "Task graph management.",
     category: "stack",
     example: "br ready",
-    docsUrl: "/learn/beads",
+    docsUrl: "/learn/tools/beads",
   },
   {
     name: "bv",
@@ -244,7 +252,7 @@ export const COMMANDS: CommandRef[] = [
     description: "Issue and workflow viewer (use --robot-* flags).",
     category: "stack",
     example: "bv --robot-triage",
-    docsUrl: "/learn/bv",
+    docsUrl: "/learn/tools/beads",
   },
   {
     name: "ms",

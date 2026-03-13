@@ -751,10 +751,11 @@ function InteractiveBugScanner() {
     }
   }, [terminalLines]);
 
-  // Cleanup interval on unmount
+  // Cleanup timers on unmount
   useEffect(() => {
     return () => {
       if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
+      for (const t of fixTimersRef.current) clearTimeout(t);
     };
   }, []);
 
@@ -853,7 +854,13 @@ function InteractiveBugScanner() {
     [phase]
   );
 
+  const fixTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
   const startFixWorkflow = useCallback(() => {
+    // Clear any previous fix timers
+    for (const t of fixTimersRef.current) clearTimeout(t);
+    fixTimersRef.current = [];
+
     setPhase("fixing");
     setFixStep(0);
 
@@ -862,38 +869,44 @@ function InteractiveBugScanner() {
     let cumulativeDelay = 0;
     stepTimings.forEach((delay, i) => {
       cumulativeDelay += delay;
-      setTimeout(() => {
+      const t = setTimeout(() => {
         setFixStep(i + 1);
         if (i === 0) {
-          setTimeout(() => {
+          const t2 = setTimeout(() => {
             addTerminalLine("\n$ # Reading finding details...");
           }, 0);
+          fixTimersRef.current.push(t2);
         }
         if (i === 1) {
-          setTimeout(() => {
+          const t2 = setTimeout(() => {
             addTerminalLine(
               `$ vim ${scenario.findings[0]?.file ?? "file.ts"}:${scenario.findings[0]?.line ?? 1}`
             );
           }, 0);
+          fixTimersRef.current.push(t2);
         }
         if (i === 2) {
-          setTimeout(() => {
+          const t2 = setTimeout(() => {
             addTerminalLine("$ # Applying fix...");
           }, 0);
+          fixTimersRef.current.push(t2);
         }
         if (i === 3) {
-          setTimeout(() => {
+          const t2 = setTimeout(() => {
             addTerminalLine(`$ ${scenario.command}`);
             addTerminalLine("  [ok] All files clean");
           }, 0);
+          fixTimersRef.current.push(t2);
         }
         if (i === 4) {
-          setTimeout(() => {
+          const t2 = setTimeout(() => {
             addTerminalLine("\nExit code: 0 - All clear!");
             setPhase("done");
           }, 0);
+          fixTimersRef.current.push(t2);
         }
       }, cumulativeDelay);
+      fixTimersRef.current.push(t);
     });
   }, [scenario, addTerminalLine]);
 

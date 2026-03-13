@@ -276,6 +276,7 @@ function InteractiveSessionHandoffImpl() {
   const [pipelineProgress, setPipelineProgress] = useState(0);
   const terminalRef = useRef<HTMLDivElement>(null);
   const animFrameRef = useRef(0);
+  const pipelineFrameRef = useRef(0);
 
   const step = SCENARIO_STEPS[currentStep];
   const source = AGENTS_DATA[sourceAgent];
@@ -351,14 +352,14 @@ function InteractiveSessionHandoffImpl() {
       const ease = 1 - Math.pow(1 - progress, 3);
       setPipelineProgress(startProgress + (targetProgress - startProgress) * ease);
       if (progress < 1) {
-        animFrameRef.current = requestAnimationFrame(tick);
+        pipelineFrameRef.current = requestAnimationFrame(tick);
       }
     }
 
-    animFrameRef.current = requestAnimationFrame(tick);
+    pipelineFrameRef.current = requestAnimationFrame(tick);
     return () => {
       running = false;
-      cancelAnimationFrame(animFrameRef.current);
+      cancelAnimationFrame(pipelineFrameRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep]);

@@ -1062,6 +1062,7 @@ function InteractiveBuildTimeline() {
   const resetSimulation = useCallback(() => {
     if (phaseTimerRef.current) clearTimeout(phaseTimerRef.current);
     if (auditTimerRef.current) clearTimeout(auditTimerRef.current);
+    // simTimersRef cleared in startSimulation before use
     setPhase("idle");
     setCountdownValue(5);
     setAuditIndex(0);
@@ -1070,35 +1071,49 @@ function InteractiveBuildTimeline() {
     setKeyBRotation(0);
   }, []);
 
+  const simTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
   const startSimulation = useCallback(() => {
     resetSimulation();
+    // Clear previous simulation timers
+    for (const t of simTimersRef.current) clearTimeout(t);
+    simTimersRef.current = [];
 
     // Use setTimeout to avoid synchronous setState in sequence
-    setTimeout(() => {
+    const t0 = setTimeout(() => {
       setPhase("initiating");
       setKeyARotation(90);
     }, 50);
+    simTimersRef.current.push(t0);
 
-    phaseTimerRef.current = setTimeout(() => {
+    const t1 = setTimeout(() => {
       setPhase("reviewing");
     }, 2000);
+    simTimersRef.current.push(t1);
+    phaseTimerRef.current = t1;
 
-    setTimeout(() => {
+    const t2 = setTimeout(() => {
       if (scenario.outcome === "denied") {
-        phaseTimerRef.current = setTimeout(() => {
+        const t3 = setTimeout(() => {
           setPhase("denied");
-          setTimeout(() => {
+          const t4 = setTimeout(() => {
             setPhase("aborted");
           }, 1500);
+          simTimersRef.current.push(t4);
         }, 4000);
+        simTimersRef.current.push(t3);
+        phaseTimerRef.current = t3;
       } else {
-        phaseTimerRef.current = setTimeout(() => {
+        const t3 = setTimeout(() => {
           setKeyBRotation(90);
           setPhase("countdown");
           setCountdownValue(scenario.id === "emergency-rollback" ? 3 : 5);
         }, 4000);
+        simTimersRef.current.push(t3);
+        phaseTimerRef.current = t3;
       }
     }, 100);
+    simTimersRef.current.push(t2);
   }, [resetSimulation, scenario.outcome, scenario.id]);
 
   const handleScenarioChange = useCallback(

@@ -70,9 +70,20 @@ export function GuideSection({
             {icon}
           </div>
         )}
-        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white tracking-tight leading-tight">
-          {title}
-        </h2>
+        
+        {title.startsWith('Phase ') ? (
+          <div className="flex flex-col">
+            <span className="text-primary/70 font-mono text-xs uppercase tracking-[0.2em] mb-1 opacity-80">{title.split(':')[0]}</span>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white tracking-tight leading-tight">
+              {title.split(':').slice(1).join(':').trim()}
+            </h2>
+          </div>
+        ) : (
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white tracking-tight leading-tight">
+            {title}
+          </h2>
+        )}
+
         <div className="flex-1 h-px bg-gradient-to-r from-primary/30 via-white/10 to-transparent hidden sm:block ml-4" />
       </div>
       <div className="space-y-8 text-white/80">{children}</div>
@@ -125,15 +136,16 @@ export function P({
 }
 
 // =============================================================================
-// BLOCKQUOTE - Elegant quote blocks with gradient accent
+// BLOCKQUOTE - Elegant quote blocks
 // =============================================================================
 export function BlockQuote({ children }: { children: ReactNode }) {
   return (
-    <div className="relative rounded-2xl border border-white/[0.05] bg-gradient-to-r from-primary/[0.05] to-transparent p-6 pl-14 sm:pl-16 overflow-hidden shadow-[inset_0_1px_1px_rgba(255,255,255,0.02)]">
-      {/* Subtle left accent */}
-      <div className="absolute left-0 top-0 bottom-0 w-[4px] bg-gradient-to-b from-primary via-violet-400 to-primary/20 shadow-[0_0_15px_var(--color-primary)]" />
-      <Quote className="absolute left-5 sm:left-6 top-6 h-5 w-5 sm:h-6 sm:w-6 text-primary/40" />
-      <div className="text-white/80 italic leading-relaxed text-base sm:text-lg font-light tracking-wide">
+    <div className="relative pl-6 sm:pl-8 py-1 my-6 overflow-hidden">
+      {/* Editorial left accent */}
+      <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-full bg-white/10" />
+      <div className="absolute left-0 top-1/4 bottom-1/4 w-[3px] rounded-full bg-gradient-to-b from-transparent via-white/40 to-transparent" />
+      <Quote className="absolute left-[-4px] top-[-8px] h-8 w-8 text-white/[0.03] rotate-180" />
+      <div className="text-zinc-300 italic leading-[1.75] text-[1.05rem] font-light tracking-[-0.01em]">
         {children}
       </div>
     </div>
@@ -187,8 +199,10 @@ export function PromptBlock({
 
   // Very simple client-side syntax highlighting for structural keywords
   const highlightPrompt = (text: string) => {
+    // CRITICAL: Escape HTML first to prevent injection or broken rendering from < tags in prompts
+    const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const keywords = ['Search', 'Review', 'Read', 'Write', 'Fix', 'Create', 'Update', 'Do we have', 'OK', 'Look', 'Execute'];
-    let highlighted = text;
+    let highlighted = escaped;
     keywords.forEach(kw => {
       const regex = new RegExp(`\\b(${kw})\\b`, 'g');
       highlighted = highlighted.replace(regex, '<span class="text-cyan-400 font-semibold">$1</span>');
@@ -820,18 +834,18 @@ export function TableOfContents({ items }: { items: TocItem[] }) {
   return (
     <>
       {/* Desktop TOC */}
-      <div className="hidden xl:block">
+      <div className="hidden lg:block">
         {tocContent}
       </div>
 
       {/* Mobile TOC trigger */}
-      <div className="xl:hidden fixed bottom-6 right-6 z-50">
+      <div className="lg:hidden fixed bottom-6 right-6 z-50">
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/90 text-white shadow-lg shadow-primary/30 backdrop-blur-sm transition-transform active:scale-95"
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-[0_0_20px_rgba(var(--color-primary),0.5)] transition-transform active:scale-95 hover:scale-105"
           aria-label="Toggle table of contents"
         >
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
       </div>
 
@@ -843,7 +857,7 @@ export function TableOfContents({ items }: { items: TocItem[] }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 xl:hidden"
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
               onClick={() => setMobileOpen(false)}
             />
             <motion.div
@@ -851,19 +865,21 @@ export function TableOfContents({ items }: { items: TocItem[] }) {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="fixed right-0 top-0 bottom-0 w-72 bg-[oklch(0.14_0.01_260)] border-l border-white/[0.08] z-50 xl:hidden overflow-y-auto p-4 pt-6"
+              className="fixed right-0 top-0 bottom-0 w-[85vw] max-w-sm bg-[#0a0a0c] border-l border-white/[0.08] z-50 lg:hidden overflow-y-auto p-4 pt-6 shadow-2xl"
             >
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">Contents</span>
+              <div className="flex items-center justify-between mb-8 px-2 border-b border-white/[0.05] pb-4">
+                <span className="text-xs font-semibold text-primary/70 uppercase tracking-[0.2em]">Navigation</span>
                 <button
                   onClick={() => setMobileOpen(false)}
-                  className="p-1 rounded-lg hover:bg-white/5 text-white/40"
+                  className="p-2 rounded-full hover:bg-white/10 text-white/60 transition-colors"
                   aria-label="Close"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-5 w-5" />
                 </button>
               </div>
-              {tocContent}
+              <div className="px-2 pb-12">
+                {tocContent}
+              </div>
             </motion.div>
           </>
         )}

@@ -501,10 +501,11 @@ function HighlightMatch({ text, query }: { text: string; query: string }) {
   if (!query.trim()) return <>{text}</>;
   const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
   const parts = text.split(regex);
+  // After split with a capturing group, odd indices are matches
   return (
     <>
       {parts.map((part, i) =>
-        regex.test(part) ? (
+        i % 2 === 1 ? (
           <span key={i} className="text-primary bg-primary/20 rounded px-0.5">
             {part}
           </span>

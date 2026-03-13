@@ -553,7 +553,7 @@ function InteractiveGraphTriage() {
   const terminalRef = useRef<HTMLDivElement>(null);
   const criticalPathTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Clean up intervals on unmount
+  // Clean up timers on unmount
   useEffect(() => {
     return () => {
       if (criticalPathTimerRef.current) {
@@ -626,12 +626,11 @@ function InteractiveGraphTriage() {
     setSelectedNode(null);
     setTerminalLines([]);
     setCriticalPathStep(0);
-    const timer = setTimeout(() => {
+    setTimeout(() => {
       setTriageRun(true);
       setAnimatingPhase('done');
       setSelectedNode(topNode.id);
     }, 1800);
-    return () => clearTimeout(timer);
   }, [animatingPhase, topNode.id]);
 
   const handleAnalysisModeChange = useCallback((mode: AnalysisMode) => {

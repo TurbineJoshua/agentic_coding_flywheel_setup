@@ -554,8 +554,15 @@ function InteractiveResearchPipeline() {
   const autoPlayRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const terminalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const terminalTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
   // Animate terminal lines when phase changes
   const animateTerminal = useCallback((phase: number) => {
+    // Clear previous terminal animation timers
+    for (const t of terminalTimersRef.current) clearTimeout(t);
+    terminalTimersRef.current = [];
+    if (terminalTimerRef.current) clearTimeout(terminalTimerRef.current);
+
     setTerminalLineCount(0);
     const lines = RESEARCH_PHASES[phase].terminalLines;
     let count = 0;
@@ -563,10 +570,14 @@ function InteractiveResearchPipeline() {
       count += 1;
       if (count <= lines.length) {
         setTerminalLineCount(count);
-        terminalTimerRef.current = setTimeout(showNextLine, 180);
+        const t = setTimeout(showNextLine, 180);
+        terminalTimersRef.current.push(t);
+        terminalTimerRef.current = t;
       }
     }
-    terminalTimerRef.current = setTimeout(showNextLine, 300);
+    const initial = setTimeout(showNextLine, 300);
+    terminalTimersRef.current.push(initial);
+    terminalTimerRef.current = initial;
   }, []);
 
   const goToPhase = useCallback((phase: number) => {
@@ -578,6 +589,7 @@ function InteractiveResearchPipeline() {
     animateTerminal(0);
     return () => {
       if (terminalTimerRef.current) clearTimeout(terminalTimerRef.current);
+      for (const t of terminalTimersRef.current) clearTimeout(t);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -588,7 +600,8 @@ function InteractiveResearchPipeline() {
       autoPlayRef.current = setInterval(() => {
         setActivePhase((prev) => {
           const next = (prev + 1) % RESEARCH_PHASES.length;
-          animateTerminal(next);
+          // Defer side effect out of state updater
+          setTimeout(() => animateTerminal(next), 0);
           return next;
         });
       }, 3500);

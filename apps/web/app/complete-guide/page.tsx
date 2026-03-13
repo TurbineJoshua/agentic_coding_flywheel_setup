@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { motion, useReducedMotion, useInView, useMotionTemplate, useMotionValue } from "framer-motion";
+import { motion, useReducedMotion, useInView, useMotionTemplate, useMotionValue, AnimatePresence } from "framer-motion";
 import {
   BookOpen,
   Brain,
@@ -52,6 +52,7 @@ import {
   FlywheelDiagram,
   TableOfContents,
   CodeBlock,
+  PhaseCard,
   PrincipleCard,
   OperatorCard,
 } from "@/components/complete-guide/guide-components";
@@ -86,6 +87,458 @@ const TOC_ITEMS = [
   { id: "practical", label: "Practical Considerations", number: "23" },
   { id: "prompt-library", label: "Prompt Library", number: "24" },
 ];
+
+// =============================================================================
+// INTERACTIVE VISUALIZATION: Representation Ladder
+// Section 2 — Plan Space → Bead Space → Code Space
+// Teaching variable: Cost of fixing mistakes grows exponentially deeper you go
+// Aha pattern: D (Failure Revelation) — click "Introduce Bug" at any layer
+// =============================================================================
+const LADDER_LAYERS = [
+  { id: "plan", label: "Plan Space", color: "#22d3ee", width: 90, cost: "1x", desc: "Catch here: fix the prose, re-think the architecture. Minutes of work." },
+  { id: "bead", label: "Bead Space", color: "#a78bfa", width: 65, cost: "5x", desc: "Catch here: revise bead boundaries, update dependencies, re-polish. Hours of work." },
+  { id: "code", label: "Code Space", color: "#f97316", width: 40, cost: "25x", desc: "Catch here: rewrite implementation, fix downstream tests, debug regressions. Days of work." },
+];
+
+function RepresentationLadder() {
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const prefersReducedMotion = useReducedMotion();
+  const reducedMotion = prefersReducedMotion ?? false;
+  const [bugLevel, setBugLevel] = useState<number | null>(null);
+
+  const handleBugClick = useCallback((level: number) => setBugLevel(level), []);
+  const handleReset = useCallback(() => setBugLevel(null), []);
+
+  return (
+    <div ref={ref} className="my-8 rounded-2xl border border-white/[0.08] bg-[#0a0a0c] p-6 shadow-xl glass-subtle transition-all duration-300 hover:border-white/20">
+      <div className="mb-4 flex items-center justify-between">
+        <h4 className="text-sm font-semibold text-white/80">Interactive: Where You Catch the Bug Matters</h4>
+        {bugLevel !== null && (
+          <button onClick={handleReset} className="rounded-md bg-slate-800 px-3 py-1 text-xs text-slate-400 hover:bg-slate-700 transition-colors">
+            Reset
+          </button>
+        )}
+      </div>
+      <p className="mb-6 text-xs text-white/50">Click &ldquo;Introduce Bug&rdquo; at any layer to see the cost cascade</p>
+
+      <div className="space-y-3">
+        {LADDER_LAYERS.map((layer, i) => {
+          const isBugSource = bugLevel === i;
+          const isCascade = bugLevel !== null && i > bugLevel;
+
+          return (
+            <motion.div
+              key={layer.id}
+              initial={reducedMotion ? {} : { opacity: 0, x: -20 }}
+              animate={isInView ? { opacity: 1, x: 0 } : {}}
+              transition={reducedMotion ? { duration: 0 } : { delay: i * 0.15, type: "spring", stiffness: 200, damping: 25 }}
+            >
+              <div className="flex items-center gap-4">
+                <motion.div
+                  className="relative h-16 rounded-xl border transition-colors duration-300"
+                  style={{
+                    width: `${layer.width}%`,
+                    borderColor: isBugSource ? "#ef4444" : isCascade ? "#f59e0b80" : `${layer.color}40`,
+                    backgroundColor: isBugSource ? "rgba(239,68,68,0.15)" : isCascade ? "rgba(245,158,11,0.08)" : `${layer.color}10`,
+                  }}
+                  animate={isBugSource ? { scale: [1, 1.02, 1] } : { scale: 1 }}
+                  transition={isBugSource ? { repeat: Infinity, duration: 1.5 } : { duration: 0.3 }}
+                >
+                  <div className="flex h-full items-center justify-between px-4">
+                    <div className="min-w-0">
+                      <span className="text-sm font-bold" style={{ color: layer.color }}>{layer.label}</span>
+                      {isBugSource && (
+                        <motion.span
+                          initial={{ opacity: 0, scale: 0.5 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="ml-2 inline-flex items-center rounded-full bg-red-500/20 px-2 py-0.5 text-[10px] font-bold text-red-400"
+                        >
+                          BUG FOUND
+                        </motion.span>
+                      )}
+                      {isCascade && (
+                        <motion.span
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: (i - (bugLevel ?? 0)) * 0.3 }}
+                          className="ml-2 inline-flex items-center rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-400"
+                        >
+                          CASCADE
+                        </motion.span>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-[10px] text-white/40">Fix cost</div>
+                      <motion.div
+                        className="text-lg font-black tabular-nums"
+                        style={{ color: isBugSource || isCascade ? "#ef4444" : layer.color }}
+                        animate={isBugSource || isCascade ? { scale: [1, 1.15, 1] } : { scale: 1 }}
+                        transition={{ duration: 0.5 }}
+                      >
+                        {layer.cost}
+                      </motion.div>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {bugLevel === null && (
+                  <motion.button
+                    onClick={() => handleBugClick(i)}
+                    className="shrink-0 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[10px] font-semibold text-red-400 hover:bg-red-500/20 transition-colors whitespace-nowrap"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Bug className="inline h-3 w-3 mr-1" />Bug
+                  </motion.button>
+                )}
+              </div>
+
+              <AnimatePresence>
+                {isBugSource && (
+                  <motion.p
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-2 pl-4 text-xs text-white/60 leading-relaxed"
+                  >
+                    {layer.desc}
+                  </motion.p>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      <AnimatePresence>
+        {bugLevel !== null && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="mt-6 rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4"
+          >
+            <p className="text-xs text-cyan-300 leading-relaxed">
+              {bugLevel === 0
+                ? "Catching bugs in plan space is 25\u00d7 cheaper than finding them in code. This is why the methodology spends 85%+ of effort on planning."
+                : bugLevel === 1
+                ? "A bug that reaches bead space means rework across multiple beads and their dependencies. 5\u00d7 more expensive than fixing the plan."
+                : "Bugs found in code require implementation rework, test rewrites, and debugging. Every layer above absorbs the blast radius."}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// =============================================================================
+// INTERACTIVE VISUALIZATION: Convergence Detector
+// Section 9 — Iterative Bead Polishing convergence model
+// Teaching variable: Convergence is a measurable weighted score, not a gut feel
+// Aha pattern: A (Parameter Manipulation) — drag sliders, watch gauge respond
+// =============================================================================
+function getConvergencePhase(s: number) {
+  if (s < 0.3) return { label: "Major Fixes", color: "#ef4444", desc: "Wild swings, fundamental structural changes" };
+  if (s < 0.55) return { label: "Architecture", color: "#f59e0b", desc: "Interface improvements, boundary refinements" };
+  if (s < 0.75) return { label: "Refinement", color: "#22d3ee", desc: "Edge cases, nuanced handling" };
+  return { label: "Polishing", color: "#34d399", desc: "Converging to steady state" };
+}
+
+function getConvergenceVerdict(s: number) {
+  if (s < 0.5) return "Keep polishing \u2014 still finding meaningful issues";
+  if (s < 0.75) return "Getting close \u2014 watch for oscillation patterns";
+  if (s < 0.9) return "Ready to move on to implementation";
+  return "Diminishing returns \u2014 stop polishing, start coding";
+}
+
+const CONVERGENCE_SIGNALS = [
+  { label: "Output Size Shrinking", weight: 0.35, weightLabel: "35%", color: "#38bdf8" },
+  { label: "Change Velocity Slowing", weight: 0.35, weightLabel: "35%", color: "#a78bfa" },
+  { label: "Content Similarity Rising", weight: 0.30, weightLabel: "30%", color: "#34d399" },
+] as const;
+
+const PHASE_BANDS = [
+  { threshold: 0, width: 30, color: "#ef4444", span: 0.3 },
+  { threshold: 0.3, width: 25, color: "#f59e0b", span: 0.25 },
+  { threshold: 0.55, width: 20, color: "#22d3ee", span: 0.2 },
+  { threshold: 0.75, width: 25, color: "#34d399", span: 0.25 },
+];
+
+function ConvergenceDetector() {
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const prefersReducedMotion = useReducedMotion();
+  const reducedMotion = prefersReducedMotion ?? false;
+  const [values, setValues] = useState([0.3, 0.2, 0.4]);
+
+  const score = values[0] * 0.35 + values[1] * 0.35 + values[2] * 0.30;
+  const phase = getConvergencePhase(score);
+
+  const updateSignal = useCallback((idx: number, val: number) => {
+    setValues(prev => { const next = [...prev]; next[idx] = val; return next; });
+  }, []);
+
+  return (
+    <div ref={ref} className="my-8 rounded-2xl border border-white/[0.08] bg-[#0a0a0c] p-6 shadow-xl glass-subtle transition-all duration-300 hover:border-white/20">
+      <h4 className="mb-1 text-sm font-semibold text-white/80">Interactive: Convergence Detection Simulator</h4>
+      <p className="mb-6 text-xs text-white/50">Drag the sliders to model different polishing states</p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+        {CONVERGENCE_SIGNALS.map((signal, idx) => (
+          <motion.div
+            key={signal.label}
+            initial={reducedMotion ? {} : { opacity: 0, y: 15 }}
+            animate={isInView ? { opacity: 1, y: 0 } : {}}
+            transition={reducedMotion ? { duration: 0 } : { delay: idx * 0.1, type: "spring", stiffness: 200, damping: 25 }}
+          >
+            <div className="flex items-baseline justify-between mb-2">
+              <span className="text-xs font-medium text-white/70">{signal.label}</span>
+              <span className="text-[10px] text-white/40">{signal.weightLabel}</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={values[idx]}
+              onChange={(e) => updateSignal(idx, Number(e.target.value))}
+              className="w-full h-2 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white/50 [&::-webkit-slider-thumb]:cursor-pointer"
+              style={{
+                background: `linear-gradient(to right, ${signal.color} ${values[idx] * 100}%, #1e293b ${values[idx] * 100}%)`,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                ["--tw-slider-thumb-bg" as any]: signal.color,
+              }}
+            />
+            <div className="mt-1 text-right text-xs tabular-nums font-mono" style={{ color: signal.color }}>
+              {(values[idx] * 100).toFixed(0)}%
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Convergence gauge */}
+      <motion.div
+        initial={reducedMotion ? {} : { opacity: 0, scale: 0.9 }}
+        animate={isInView ? { opacity: 1, scale: 1 } : {}}
+        transition={reducedMotion ? { duration: 0 } : { type: "spring", stiffness: 200, damping: 25, delay: 0.2 }}
+      >
+        <div
+          className="mx-auto flex max-w-sm items-center justify-center gap-4 rounded-xl border p-6 transition-colors duration-500"
+          style={{ borderColor: `${phase.color}40`, backgroundColor: `${phase.color}08` }}
+        >
+          <div className="relative h-20 w-20 shrink-0">
+            <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+              <circle cx="50" cy="50" r="42" fill="none" stroke="#1e293b" strokeWidth="8" />
+              <motion.circle
+                cx="50" cy="50" r="42"
+                fill="none"
+                stroke={phase.color}
+                strokeWidth="8"
+                strokeLinecap="round"
+                initial={false}
+                animate={{ strokeDasharray: `${score * 264} 264` }}
+                transition={{ type: "spring", stiffness: 100, damping: 20 }}
+              />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-lg font-black tabular-nums" style={{ color: phase.color }}>
+                {(score * 100).toFixed(0)}
+              </span>
+            </div>
+          </div>
+          <div className="text-left min-w-0">
+            <div className="text-sm font-bold" style={{ color: phase.color }}>{phase.label}</div>
+            <div className="text-[11px] text-white/50 mt-0.5">{phase.desc}</div>
+            <div className="text-[10px] text-white/40 mt-2 leading-relaxed">{getConvergenceVerdict(score)}</div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Phase bar */}
+      <div className="mt-6 flex h-2 rounded-full overflow-hidden bg-slate-800">
+        {PHASE_BANDS.map((band, i) => (
+          <div key={i} className="relative" style={{ width: `${band.width}%`, backgroundColor: `${band.color}30` }}>
+            {score >= band.threshold && score < band.threshold + band.span && (
+              <motion.div
+                className="absolute top-0 h-full rounded-full"
+                style={{ backgroundColor: band.color }}
+                initial={false}
+                animate={{ width: `${Math.min(100, ((score - band.threshold) / band.span) * 100)}%` }}
+                transition={{ type: "spring", stiffness: 200, damping: 25 }}
+              />
+            )}
+            {score >= band.threshold + band.span && (
+              <div className="absolute top-0 h-full w-full rounded-full" style={{ backgroundColor: band.color }} />
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="mt-1 flex justify-between text-[9px] text-white/30 px-0.5">
+        <span>0</span><span>0.30</span><span>0.55</span><span>0.75</span><span>1.00</span>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// INTERACTIVE VISUALIZATION: Coordination Trio
+// Section 12 — How Beads + Agent Mail + bv form an interconnected system
+// Teaching variable: Each tool is essential but insufficient alone
+// Aha pattern: D (Failure Revelation) — click to "remove" a tool
+// =============================================================================
+const TRIO_TOOLS = [
+  { id: "beads", label: "Beads", sub: "(br)", color: "#a78bfa", x: 300, y: 70, desc: "Centralized task store with dependency graph. Single source of truth for what work exists.", without: "Agents have no structured work. They improvise randomly, duplicate effort, and miss tasks." },
+  { id: "mail", label: "Agent Mail", sub: "", color: "#22d3ee", x: 120, y: 310, desc: "Communication layer with file reservations. How agents coordinate without stepping on each other.", without: "Agents can\u2019t communicate or reserve files. Merge conflicts destroy work constantly." },
+  { id: "bv", label: "bv", sub: "", color: "#34d399", x: 480, y: 310, desc: "Graph-theory compass computing PageRank, betweenness, and critical path from the bead graph.", without: "Agents choose tasks randomly instead of optimally. Critical bottlenecks go unnoticed." },
+];
+
+type TrioToolId = typeof TRIO_TOOLS[number]["id"];
+
+const TRIO_EDGES = [
+  { from: "beads", to: "mail", label1: "Bead IDs thread", label2: "communication" },
+  { from: "beads", to: "bv", label1: "Dependency graph", label2: "drives triage" },
+  { from: "mail", to: "bv", label1: "Reservations inform", label2: "availability" },
+];
+
+function CoordinationTrioViz() {
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const prefersReducedMotion = useReducedMotion();
+  const reducedMotion = prefersReducedMotion ?? false;
+  const [hoveredTool, setHoveredTool] = useState<TrioToolId | null>(null);
+  const [disabledTool, setDisabledTool] = useState<TrioToolId | null>(null);
+
+  const toolMap = new Map(TRIO_TOOLS.map(t => [t.id, t] as const));
+
+  return (
+    <div ref={ref} className="my-8 rounded-2xl border border-white/[0.08] bg-[#0a0a0c] p-6 shadow-xl glass-subtle transition-all duration-300 hover:border-white/20">
+      <div className="mb-1 flex items-center justify-between flex-wrap gap-2">
+        <h4 className="text-sm font-semibold text-white/80">Interactive: The Coordination Trio</h4>
+        {disabledTool && (
+          <button onClick={() => setDisabledTool(null)} className="rounded-md bg-slate-800 px-3 py-1 text-xs text-slate-400 hover:bg-slate-700 transition-colors">
+            Re-enable All
+          </button>
+        )}
+      </div>
+      <p className="mb-4 text-xs text-white/50">Hover to explore connections. Click a tool to see what breaks without it.</p>
+
+      <motion.svg
+        viewBox="0 0 600 380"
+        className="mx-auto w-full max-w-lg"
+        initial={reducedMotion ? {} : { opacity: 0 }}
+        animate={isInView ? { opacity: 1 } : {}}
+        transition={reducedMotion ? { duration: 0 } : { duration: 0.5 }}
+      >
+        <defs>
+          <filter id="trio-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="6" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+        </defs>
+
+        {/* Edges */}
+        {TRIO_EDGES.map((edge, i) => {
+          const from = toolMap.get(edge.from)!;
+          const to = toolMap.get(edge.to)!;
+          const isDisabled = disabledTool === edge.from || disabledTool === edge.to;
+          const isHovered = !!(hoveredTool && (edge.from === hoveredTool || edge.to === hoveredTool));
+          const mx = (from.x + to.x) / 2;
+          const my = (from.y + to.y) / 2;
+          const cx = mx + (300 - mx) * 0.25;
+          const cy = my + (220 - my) * 0.25;
+
+          return (
+            <g key={i}>
+              <motion.path
+                d={`M ${from.x} ${from.y} Q ${cx} ${cy} ${to.x} ${to.y}`}
+                fill="none"
+                stroke={isDisabled ? "#ef4444" : isHovered ? "#22d3ee" : "#334155"}
+                strokeWidth={isHovered ? 2.5 : 1.5}
+                strokeDasharray={isDisabled ? "6 4" : "none"}
+                animate={{ opacity: isDisabled ? 0.25 : hoveredTool ? (isHovered ? 0.9 : 0.12) : 0.5 }}
+                transition={{ duration: 0.2 }}
+              />
+              {!isDisabled && (
+                <text
+                  x={mx + (from.y < to.y ? 0 : edge.from === "mail" ? 20 : -20)}
+                  y={my + (from.y < to.y ? -8 : 0)}
+                  textAnchor="middle"
+                  className="pointer-events-none"
+                  style={{ opacity: isHovered ? 0.8 : 0.35 }}
+                >
+                  <tspan x={mx + (from.y < to.y ? 0 : edge.from === "mail" ? 20 : -20)} className="fill-white/40 text-[8px]">{edge.label1}</tspan>
+                  <tspan x={mx + (from.y < to.y ? 0 : edge.from === "mail" ? 20 : -20)} dy="11" className="fill-white/40 text-[8px]">{edge.label2}</tspan>
+                </text>
+              )}
+            </g>
+          );
+        })}
+
+        {/* Nodes */}
+        {TRIO_TOOLS.map((tool) => {
+          const isDisabled = disabledTool === tool.id;
+          const isHovered = hoveredTool === tool.id;
+          const isConnected = !hoveredTool || hoveredTool === tool.id ||
+            TRIO_EDGES.some(e => (e.from === hoveredTool && e.to === tool.id) || (e.to === hoveredTool && e.from === tool.id));
+
+          return (
+            <motion.g
+              key={tool.id}
+              onMouseEnter={() => !disabledTool && setHoveredTool(tool.id)}
+              onMouseLeave={() => setHoveredTool(null)}
+              onClick={() => setDisabledTool(disabledTool === tool.id ? null : tool.id)}
+              className="cursor-pointer"
+              animate={{ opacity: isDisabled ? 0.35 : isConnected ? 1 : 0.25 }}
+              transition={{ duration: 0.2 }}
+            >
+              <motion.circle
+                cx={tool.x} cy={tool.y}
+                r={isHovered ? 40 : 36}
+                fill={isDisabled ? "#1e293b" : `${tool.color}15`}
+                stroke={isDisabled ? "#ef4444" : tool.color}
+                strokeWidth={isHovered ? 3 : 2}
+                strokeDasharray={isDisabled ? "6 4" : "none"}
+                filter={isHovered && !isDisabled ? "url(#trio-glow)" : undefined}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              />
+              {isDisabled && (
+                <line x1={tool.x - 20} y1={tool.y - 20} x2={tool.x + 20} y2={tool.y + 20} stroke="#ef4444" strokeWidth="3" strokeLinecap="round" />
+              )}
+              <text x={tool.x} y={tool.sub ? tool.y - 5 : tool.y} textAnchor="middle" dominantBaseline="central" className="fill-white text-[11px] font-bold pointer-events-none">{tool.label}</text>
+              {tool.sub && <text x={tool.x} y={tool.y + 10} textAnchor="middle" dominantBaseline="central" className="fill-white/50 text-[9px] pointer-events-none">{tool.sub}</text>}
+            </motion.g>
+          );
+        })}
+      </motion.svg>
+
+      {/* Info panel */}
+      <AnimatePresence mode="wait">
+        {disabledTool && (
+          <motion.div
+            key={`d-${disabledTool}`}
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+            className="mt-2 rounded-xl border border-red-500/20 bg-red-500/5 p-4"
+          >
+            <div className="text-xs font-bold text-red-400 mb-1">Without {toolMap.get(disabledTool)?.label}:</div>
+            <p className="text-xs text-white/60">{toolMap.get(disabledTool)?.without}</p>
+          </motion.div>
+        )}
+        {!disabledTool && hoveredTool && (
+          <motion.div
+            key={`h-${hoveredTool}`}
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+            className="mt-2 rounded-xl border border-white/10 bg-white/[0.03] p-4"
+          >
+            <div className="text-xs font-bold" style={{ color: toolMap.get(hoveredTool)?.color }}>{toolMap.get(hoveredTool)?.label}</div>
+            <p className="text-xs text-white/60 mt-1">{toolMap.get(hoveredTool)?.desc}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 // =============================================================================
 // HERO SECTION
@@ -299,7 +752,7 @@ export default function CompleteGuidePage() {
         ],
         [
           <strong key="t6">AGENTS.md</strong>,
-          <>The operating manual every agent must reload after <Jargon term="context-window">compaction</Jargon></>,
+          <>The operating manual every agent must reload after compaction</>,
           "Keeps the swarm from forgetting how to behave",
         ],
         [
@@ -693,6 +1146,7 @@ export default function CompleteGuidePage() {
         ],
       ]}
     />
+    <RepresentationLadder />
   </SubSection>
 
   <SubSection title="Why This Prevents Slop">
@@ -780,9 +1234,9 @@ export default function CompleteGuidePage() {
       headers={["Aspect", "Value"]}
       rows={[
         ["User", <IC key="v0">ubuntu</IC>],
-        ["Shell", "zsh + oh-my-zsh + powerlevel10k"],
+        ["Shell", <><Jargon term="zsh">zsh</Jargon> + <Jargon term="oh-my-zsh">oh-my-zsh</Jargon> + powerlevel10k</>],
         ["Workspace", <IC key="v2">/data/projects</IC>],
-        ["Sudo", "Passwordless (vibe mode)"],
+        [<Jargon key="sudo" term="sudo">Sudo</Jargon>, "Passwordless (vibe mode)"],
         ["Tmux prefix", <IC key="v4">Ctrl-a</IC>],
       ]}
     />
@@ -842,7 +1296,7 @@ alias gmi='gemini --yolo'`}
           <Jargon term="supabase">Supabase</Jargon>, Rust/WASM for performance-critical parts
         </>,
         <>
-          <Hl>CLI tools:</Hl> Golang or Rust
+          <Hl><Jargon term="cli">CLI</Jargon> tools:</Hl> Golang or Rust
         </>,
       ]}
     />
@@ -1322,6 +1776,7 @@ br sync --flush-only                                     # Export to JSONL`}
         ["Content similarity increasing", "30%", "Are successive rounds more similar than different?"],
       ]}
     />
+    <ConvergenceDetector />
     <P>
       When the weighted convergence score reaches 0.75, you&apos;re ready to move on. Above
       0.90, you are firmly in diminishing returns.
@@ -1465,7 +1920,7 @@ br sync --flush-only                                     # Export to JSONL`}
         <><strong>Branch policy:</strong> All work on <IC>main</IC>, never <IC>master</IC>. No feature branches.</>,
         <><strong>No script-based code changes:</strong> Always make code changes manually, never via generated scripts.</>,
         <><strong>No file proliferation:</strong> Never create <IC>mainV2.rs</IC>, <IC>main_improved.rs</IC>, or similar variants. Edit the original.</>,
-        <><strong>Compiler checks after changes:</strong> Run <IC>cargo check</IC>, <IC>cargo clippy</IC>, <IC>cargo fmt --check</IC> (or equivalent) after every change.</>,
+        <><strong>Compiler checks after changes:</strong> Run <IC><Jargon term="cargo">cargo</Jargon> check</IC>, <IC>cargo clippy</IC>, <IC>cargo fmt --check</IC> (or equivalent) after every change.</>,
         <><strong>Multi-agent awareness:</strong> Never stash, revert, or overwrite another agent&apos;s changes. Use Agent Mail to coordinate.</>,
       ]}
     />
@@ -1567,7 +2022,7 @@ ntm attach myproject
 
 # Open the command palette (battle-tested prompts)
 ntm palette`} />
-                  <P>NTM is useful, but it is <Hl>not mandatory</Hl>. The methodology needs a way to run multiple agents, send them prompts quickly, and keep them coordinated. It does not require tmux specifically.</P>
+                  <P><Jargon term="ntm">NTM</Jargon> is useful, but it is <Hl>not mandatory</Hl>. The methodology needs a way to run multiple agents, send them prompts quickly, and keep them coordinated. It does not require tmux specifically.</P>
                   <P>Why the default ratio <IC>--cc=2 --cod=1 --gmi=1</IC>?</P>
                   <BulletList items={[
                     <><Hl>2 Claude</Hl> &mdash; Great for architecture and complex reasoning; the workhorse</>,
@@ -1578,7 +2033,7 @@ ntm palette`} />
 
                 <SubSection title="What a Mux Is, and What tmux Is">
                   <P>A <Hl>mux</Hl> is a <Jargon term="tmux">terminal multiplexer</Jargon>: a layer that lets you manage multiple shell sessions inside one higher-level session manager. In practice, that usually means some combination of tabs, panes, detached sessions, and reconnection to work that is still running on a local or remote machine.</P>
-                  <P><Jargon term="tmux">tmux</Jargon> is the classic Unix terminal multiplexer. It is powerful, battle-tested, and widely available on remote Linux machines. NTM is built on top of tmux, which is why NTM is such a natural fit for multi-agent work.</P>
+                  <P><Jargon term="tmux">tmux</Jargon> is the classic Unix terminal multiplexer. It is powerful, battle-tested, and widely available on remote <Jargon term="linux">Linux</Jargon> machines. NTM is built on top of tmux, which is why NTM is such a natural fit for multi-agent work.</P>
                   <P>But tmux is only one mux. WezTerm has its own built-in mux. Zellij is another mux. The method cares that you have a workable orchestration layer, not that you picked one specific brand of multiplexer.</P>
                   <P>One common alternative to NTM is to use <Hl>WezTerm</Hl> because native scrollback and text selection are more convenient there than in tmux. A very workable setup is:</P>
                   <BulletList items={[
@@ -1645,6 +2100,7 @@ ntm palette`} />
                   <BlockQuote>&ldquo;Agent Mail + Beads + bv are what unlock the truly insane productivity gains.&rdquo;</BlockQuote>
                   <P>Each tool is essential but insufficient alone. Agent Mail without beads leaves agents with no structured work. Beads without bv leaves agents randomly choosing tasks. bv without Agent Mail leaves agents unable to communicate.</P>
                   <BlockQuote>&ldquo;Each agent just uses bv on its own to find the next optimal bead to work on and marks it as being in-progress and communicates about this to the other agents using Agent Mail. It&apos;s a distributed, robust system where every agent is fungible and replaceable.&rdquo;</BlockQuote>
+                  <CoordinationTrioViz />
                 </SubSection>
 
                 <SubSection title="Why Naive Agent Communication Fails">
@@ -2808,7 +3264,7 @@ even better for you in the future!`} />
                 <SubSection title="Cost">
                   <BulletList items={[
                     <>~$500/month for Claude Max and GPT Pro subscriptions</>,
-                    <>~$50/month for a cloud server</>,
+                    <>~$50/month for a <Jargon term="cloud-server">cloud server</Jargon></>,
                     <>Multiple Max accounts may be needed for large swarms</>,
                     <><ToolPill>CAAM</ToolPill> enables instant switching when hitting rate limits</>,
                   ]} />
@@ -2849,7 +3305,7 @@ even better for you in the future!`} />
 
                 <SubSection title="Getting Started">
                   <P>
-                    The complete system is free and 100% open-source: <Hl>https://agent-flywheel.com/</Hl>
+                    The complete system is free and 100% <Jargon term="open-source">open-source</Jargon>: <Hl>https://agent-flywheel.com/</Hl>
                   </P>
                   <BlockQuote>
                     &ldquo;You don&rsquo;t even need to know much at all about computers; you just need the desire to
@@ -3110,10 +3566,10 @@ even better for you in the future!`} />
               <FooterCTA />
             </div>
 
-            {/* Sticky TOC - desktop only */}
-            <aside className="hidden lg:block w-72 shrink-0 relative">
+            {/* Sticky TOC - handles both desktop sidebar and mobile drawer internally */}
+            <aside className="w-0 lg:w-72 shrink-0 relative z-50">
               <div 
-                className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto pl-8 pb-12 border-l border-white/[0.05] scrollbar-hide"
+                className="hidden lg:block sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto pl-8 pb-12 border-l border-white/[0.05] scrollbar-hide"
                 style={{ 
                   maskImage: 'linear-gradient(to bottom, black 80%, transparent 100%)',
                   WebkitMaskImage: 'linear-gradient(to bottom, black 80%, transparent 100%)' 
@@ -3122,6 +3578,11 @@ even better for you in the future!`} />
                 <p className="text-[10px] font-semibold text-primary/70 uppercase tracking-[0.2em] mb-8 px-3">
                   Navigation
                 </p>
+                <TableOfContents items={TOC_ITEMS} />
+              </div>
+              
+              {/* Render mobile TOC directly so it's not trapped inside the hidden div */}
+              <div className="lg:hidden block">
                 <TableOfContents items={TOC_ITEMS} />
               </div>
             </aside>

@@ -150,33 +150,36 @@ export function CodeBlock({
   return (
     <div
       className={cn(
-        "group relative rounded-2xl overflow-hidden border border-white/[0.08] bg-black/60 backdrop-blur-xl",
+        "group relative rounded-xl border border-white/10 bg-[#09090b] overflow-hidden shadow-2xl transition-all duration-500 hover:border-white/20 hover:shadow-[0_0_30px_-5px_rgba(34,211,238,0.15)] ring-1 ring-inset ring-white/5",
         className,
       )}
     >
+      {/* Noise Texture */}
+      <div className="absolute inset-0 bg-noise opacity-[0.03] pointer-events-none mix-blend-overlay" />
+
       {/* Terminal header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06] bg-white/[0.02]">
+      <div className="relative z-10 flex items-center justify-between px-4 py-3 border-b border-white/10 bg-[#1a1b1e]/80 backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-red-500/80" />
-            <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
-            <div className="w-3 h-3 rounded-full bg-green-500/80" />
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-[#ff5f56] shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]" />
+            <div className="w-3 h-3 rounded-full bg-[#ffbd2e] shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]" />
+            <div className="w-3 h-3 rounded-full bg-[#27c93f] shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]" />
           </div>
           {filename ? (
-            <span className="text-xs text-white/60 font-mono">{filename}</span>
+            <span className="ml-2 text-xs text-white/50 font-mono tracking-wide">{filename}</span>
           ) : (
-            <div className="flex items-center gap-1.5 text-white/60">
+            <div className="ml-2 flex items-center gap-1.5 text-white/50">
               <Terminal className="h-3.5 w-3.5" />
-              <span className="text-xs font-mono">{language}</span>
+              <span className="text-xs font-mono tracking-wide">{language}</span>
             </div>
           )}
         </div>
-        {copyable && <CopyButton text={displayCode} />}
+        {copyable && <CopyButton text={displayCode} className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/10 border border-white/5 text-white hover:bg-white/20" />}
       </div>
 
       {/* Code content */}
-      <div className="relative p-5 overflow-x-auto">
-        <pre className="font-mono text-sm">
+      <div className="relative z-10 p-5 overflow-x-auto">
+        <pre className="font-mono text-[0.85rem] leading-[1.7] selection:bg-cyan-900/40 selection:text-white">
           {lines.map((line, i) => (
             <div
               key={i}
@@ -191,14 +194,14 @@ export function CodeBlock({
                   {i + 1}
                 </span>
               )}
-              <code className="text-white/90">
+              <code className="text-[#a1a1aa]">
                 {line.startsWith("$") ? (
                   <>
-                    <span className="text-emerald-400">$</span>
+                    <span className="text-cyan-400 font-semibold">$</span>
                     <span className="text-white/90">{line.slice(1)}</span>
                   </>
                 ) : line.startsWith("#") ? (
-                  <span className="text-white/50">{line}</span>
+                  <span className="text-white/40 italic">{line}</span>
                 ) : (
                   line
                 )}
@@ -206,9 +209,6 @@ export function CodeBlock({
             </div>
           ))}
         </pre>
-
-        {/* Subtle glow effect */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-violet-500/5 pointer-events-none" />
       </div>
     </div>
   );

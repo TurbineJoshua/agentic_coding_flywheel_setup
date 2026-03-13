@@ -49,6 +49,15 @@ test.describe.serial("Learning Hub", () => {
     expect(errors).toEqual([]);
   });
 
+  test("lesson route server-renders lesson content before progress hydration", async ({ request }) => {
+    const response = await request.get("/learn/welcome");
+    expect(response.ok()).toBeTruthy();
+
+    const html = await response.text();
+    expect(html).toContain("What You Now Have");
+    expect(html).not.toContain("Loading Progress");
+  });
+
   test("current lesson does not expose locked next-lesson links before completion", async ({ page }) => {
     await page.goto("/learn/welcome");
     await page.waitForLoadState("networkidle");
@@ -172,6 +181,22 @@ test.describe.serial("Learning Hub", () => {
     await expect(
       page.locator('a[href="https://github.com/Dicklesworthstone/repo_updater"]')
     ).toHaveCount(0);
+  });
+
+  test("command docs links avoid locked lesson routes", async ({ page }) => {
+    await page.goto("/learn/commands");
+    await page.waitForLoadState("networkidle");
+
+    await expect(page.locator('a[href="/learn/tools/claude-code"]').first()).toBeVisible();
+    await expect(page.locator('a[href="/learn/tools/codex-cli"]').first()).toBeVisible();
+    await expect(page.locator('a[href="/learn/tools/gemini-cli"]').first()).toBeVisible();
+    await expect(page.locator('a[href="/learn/tools/ntm"]').first()).toBeVisible();
+    await expect(page.locator('a[href="/learn/tools/beads"]').first()).toBeVisible();
+
+    await expect(page.locator('a[href="/learn/agent-commands"]')).toHaveCount(0);
+    await expect(page.locator('a[href="/learn/ntm-palette"]')).toHaveCount(0);
+    await expect(page.locator('a[href="/learn/beads"]')).toHaveCount(0);
+    await expect(page.locator('a[href="/learn/bv"]')).toHaveCount(0);
   });
 
   test("dashboard shortcuts do not override focused interactive controls", async ({ page }) => {

@@ -112,7 +112,7 @@ const COMMANDS: CommandEntry[] = [
     description: "Anthropic coding agent (alias for `claude`)",
     example: 'cc "fix the bug in auth.ts"',
     category: "agents",
-    learnMoreHref: "/learn/agent-commands",
+    learnMoreHref: "/learn/tools/claude-code",
   },
   {
     name: "cod",
@@ -120,7 +120,7 @@ const COMMANDS: CommandEntry[] = [
     description: "OpenAI coding agent (alias for `codex`)",
     example: 'cod "add unit tests for utils.ts"',
     category: "agents",
-    learnMoreHref: "/learn/agent-commands",
+    learnMoreHref: "/learn/tools/codex-cli",
   },
   {
     name: "gmi",
@@ -128,7 +128,7 @@ const COMMANDS: CommandEntry[] = [
     description: "Google coding agent (alias for `gemini`)",
     example: 'gmi "explain the repo structure"',
     category: "agents",
-    learnMoreHref: "/learn/agent-commands",
+    learnMoreHref: "/learn/tools/gemini-cli",
   },
   {
     name: "claude",
@@ -136,7 +136,7 @@ const COMMANDS: CommandEntry[] = [
     description: "Full command (same as `cc` on ACFS)",
     example: "claude --help",
     category: "agents",
-    learnMoreHref: "/learn/agent-commands",
+    learnMoreHref: "/learn/tools/claude-code",
   },
   {
     name: "codex",
@@ -144,7 +144,7 @@ const COMMANDS: CommandEntry[] = [
     description: "Full command (same as `cod` on ACFS)",
     example: "codex --help",
     category: "agents",
-    learnMoreHref: "/learn/agent-commands",
+    learnMoreHref: "/learn/tools/codex-cli",
   },
   {
     name: "gemini",
@@ -152,7 +152,7 @@ const COMMANDS: CommandEntry[] = [
     description: "Full command (same as `gmi` on ACFS)",
     example: "gemini --help",
     category: "agents",
-    learnMoreHref: "/learn/agent-commands",
+    learnMoreHref: "/learn/tools/gemini-cli",
   },
 
   // Stack / orchestration
@@ -162,7 +162,7 @@ const COMMANDS: CommandEntry[] = [
     description: "Agent cockpit (spawn, send prompts, dashboards)",
     example: "ntm spawn myproject --cc=2 --cod=1 --gmi=1",
     category: "stack",
-    learnMoreHref: "/learn/ntm-palette",
+    learnMoreHref: "/learn/tools/ntm",
   },
   {
     name: "br",
@@ -170,7 +170,7 @@ const COMMANDS: CommandEntry[] = [
     description: "Create/update issues and dependencies",
     example: "br ready",
     category: "stack",
-    learnMoreHref: "/learn/beads",
+    learnMoreHref: "/learn/tools/beads",
   },
   {
     name: "bv",
@@ -178,7 +178,7 @@ const COMMANDS: CommandEntry[] = [
     description: "Analyze the task DAG and pick work (robot protocol)",
     example: "bv --robot-triage --recipe high-impact",
     category: "stack",
-    learnMoreHref: "/learn/bv",
+    learnMoreHref: "/learn/tools/beads",
   },
   {
     name: "ubs",

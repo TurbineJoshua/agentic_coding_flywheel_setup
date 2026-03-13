@@ -916,6 +916,7 @@ function InteractivePromptLab() {
   const [isAnimatingTerminal, setIsAnimatingTerminal] = useState(false);
   const [terminalLines, setTerminalLines] = useState<TerminalLine[]>([]);
   const terminalRef = useRef<HTMLDivElement>(null);
+  const terminalIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const technique = TECHNIQUES.find((t) => t.id === activeTechnique)!;
 
@@ -998,6 +999,8 @@ function InteractivePromptLab() {
     });
 
     let i = 0;
+    // Clear any previous interval
+    if (terminalIntervalRef.current) clearInterval(terminalIntervalRef.current);
     const interval = setInterval(() => {
       if (i < lines.length) {
         const line = lines[i];
@@ -1005,14 +1008,14 @@ function InteractivePromptLab() {
         i++;
       } else {
         clearInterval(interval);
+        terminalIntervalRef.current = null;
         // Wrap in setTimeout to avoid setState during render
         setTimeout(() => {
           setIsAnimatingTerminal(false);
         }, 0);
       }
     }, 300);
-
-    return () => clearInterval(interval);
+    terminalIntervalRef.current = interval;
   }, [
     isAnimatingTerminal,
     enabledList,
@@ -1030,6 +1033,13 @@ function InteractivePromptLab() {
       }, 0);
     }
   }, [terminalLines]);
+
+  // Cleanup interval on unmount
+  useEffect(() => {
+    return () => {
+      if (terminalIntervalRef.current) clearInterval(terminalIntervalRef.current);
+    };
+  }, []);
 
   const tabs = [
     { id: "builder" as const, label: "Prompt Builder", icon: <Layers className="h-3.5 w-3.5" /> },

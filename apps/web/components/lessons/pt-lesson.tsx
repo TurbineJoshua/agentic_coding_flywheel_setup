@@ -622,7 +622,7 @@ function InteractiveProcessTriageDashboard() {
   const scenario = SCENARIOS[step];
   const totalSteps = SCENARIOS.length;
 
-  // Cleanup timers on scenario change
+  // Cleanup timers on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -667,7 +667,8 @@ function InteractiveProcessTriageDashboard() {
           }, 350);
         }
       }, (i + 1) * 400);
-      if (i === procs.length - 1 && timerRef.current === null) {
+      // Store the last process timer for cleanup
+      if (i === procs.length - 1) {
         timerRef.current = t;
       }
     });

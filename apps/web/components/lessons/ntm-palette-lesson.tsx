@@ -1001,8 +1001,17 @@ function InteractivePaletteBrowser() {
     ]);
   }
 
-  // Track the global flat index for highlighting
-  let globalIdx = -1;
+  // Compute global index offsets per group for highlighting
+  const groupOffsets = useMemo(() => {
+    const offsets: number[] = [];
+    let offset = 0;
+    for (const group of PALETTE_GROUPS) {
+      offsets.push(offset);
+      const items = groupedResults[group.name];
+      if (items) offset += items.length;
+    }
+    return offsets;
+  }, [groupedResults]);
 
   return (
     <div className="space-y-4">
@@ -1172,7 +1181,7 @@ function InteractivePaletteBrowser() {
 
                 {/* Grouped command list */}
                 <div className="px-3 py-2 space-y-1">
-                  {PALETTE_GROUPS.map((group) => {
+                  {PALETTE_GROUPS.map((group, groupIdx) => {
                     const items = groupedResults[group.name];
                     if (!items || items.length === 0) return null;
                     return (
@@ -1188,11 +1197,10 @@ function InteractivePaletteBrowser() {
                         </div>
                         <AnimatePresence mode="popLayout">
                           <div className="space-y-0.5">
-                            {items.map((match) => {
-                              globalIdx++;
-                              const isSelected = globalIdx === selectedIndex;
+                            {items.map((match, itemIdx) => {
+                              const currentGlobalIdx = groupOffsets[groupIdx] + itemIdx;
+                              const isSelected = currentGlobalIdx === selectedIndex;
                               const isActive = activeCommand?.id === match.command.id;
-                              const currentGlobalIdx = globalIdx;
                               return (
                                 <motion.button
                                   key={match.command.id}

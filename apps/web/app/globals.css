@@ -267,7 +267,6 @@
 
   /* Prevent inline code from causing horizontal overflow on mobile */
   code:not(pre code) {
-    overflow-wrap: break-word;
     word-break: break-word;
   }
 
@@ -1008,4 +1007,16 @@
   font-size: var(--text-lg);
   line-height: 1.65;
   letter-spacing: var(--tracking-lg);
+}
+
+/* ============================================
+   Global Selection
+   ============================================ */
+::selection {
+  background-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+  color: var(--color-white, #ffffff);
+}
+::-moz-selection {
+  background-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+  color: var(--color-white, #ffffff);
 }

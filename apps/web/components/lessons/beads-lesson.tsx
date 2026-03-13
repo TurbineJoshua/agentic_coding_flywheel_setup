@@ -909,18 +909,27 @@ function InteractiveDependencyGraph() {
     ]);
   }, []);
 
+  const autoPlayTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const clearAutoPlayTimers = useCallback(() => {
+    for (const t of autoPlayTimersRef.current) clearTimeout(t);
+    autoPlayTimersRef.current = [];
+    if (autoPlayRef.current) {
+      clearTimeout(autoPlayRef.current);
+      autoPlayRef.current = null;
+    }
+  }, []);
+
   // Auto-play demo: walk through workflow steps
   const handleAutoPlay = useCallback(() => {
     if (isAutoPlaying) {
       setIsAutoPlaying(false);
-      if (autoPlayRef.current) {
-        clearTimeout(autoPlayRef.current);
-        autoPlayRef.current = null;
-      }
+      clearAutoPlayTimers();
       return;
     }
     handleReset();
     setIsAutoPlaying(true);
+    clearAutoPlayTimers();
 
     // Step 0: create (already done, just show)
     const step0 = setTimeout(() => {
@@ -932,27 +941,30 @@ function InteractiveDependencyGraph() {
         "  Created bd-3: Auth middleware",
       ]);
     }, 0);
+    autoPlayTimersRef.current.push(step0);
     autoPlayRef.current = step0;
 
     // Step 1: deps
-    setTimeout(() => {
+    const t1 = setTimeout(() => {
       setActiveStep(1);
       addTerminalLine("$ br dep add bd-3 bd-1");
       addTerminalLine("  bd-3 now depends on bd-1");
       addTerminalLine("$ br dep add bd-5 bd-3");
       addTerminalLine("  bd-5 now depends on bd-3");
     }, 2500);
+    autoPlayTimersRef.current.push(t1);
 
     // Step 2: ready
-    setTimeout(() => {
+    const t2 = setTimeout(() => {
       setActiveStep(2);
       addTerminalLine("$ br ready");
       addTerminalLine("  bd-3  P0  Auth middleware");
       addTerminalLine("  bd-4  P2  User endpoints");
     }, 5000);
+    autoPlayTimersRef.current.push(t2);
 
     // Step 3: claim bd-3
-    setTimeout(() => {
+    const t3 = setTimeout(() => {
       setActiveStep(3);
       setSelectedId("bd-3");
       setBeads((prev) =>
@@ -965,9 +977,10 @@ function InteractiveDependencyGraph() {
       addTerminalLine("$ br update bd-3 --status=in_progress");
       addTerminalLine("  Updated bd-3: open -> in_progress");
     }, 7500);
+    autoPlayTimersRef.current.push(t3);
 
     // Step 4: close bd-3
-    setTimeout(() => {
+    const t4 = setTimeout(() => {
       setActiveStep(4);
       setBeads((prev) =>
         prev.map((b) =>
@@ -980,6 +993,7 @@ function InteractiveDependencyGraph() {
       addTerminalLine("  Closed bd-3: Auth middleware");
       addTerminalLine("  Unblocked: bd-5, bd-7");
     }, 10000);
+    autoPlayTimersRef.current.push(t4);
 
     // Step 5: sync
     const step5 = setTimeout(() => {
@@ -991,19 +1005,16 @@ function InteractiveDependencyGraph() {
         setIsAutoPlaying(false);
       }, 0);
     }, 12500);
-
-    // Store last timeout for cleanup
+    autoPlayTimersRef.current.push(step5);
     autoPlayRef.current = step5;
-  }, [isAutoPlaying, handleReset, addTerminalLine]);
+  }, [isAutoPlaying, handleReset, addTerminalLine, clearAutoPlayTimers]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (autoPlayRef.current) {
-        clearTimeout(autoPlayRef.current);
-      }
+      clearAutoPlayTimers();
     };
-  }, []);
+  }, [clearAutoPlayTimers]);
 
   const activeId = selectedId ?? hoveredId;
   const activeBead = activeId ? beadMap.get(activeId) : null;

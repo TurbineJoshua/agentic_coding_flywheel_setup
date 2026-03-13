@@ -981,9 +981,8 @@ function InteractiveAgentComparison() {
 
   // Clean up timers on unmount
   useEffect(() => {
-    const captured = timersRef.current;
     return () => {
-      for (const t of captured) clearTimeout(t);
+      for (const t of timersRef.current) clearTimeout(t);
     };
   }, []);
 

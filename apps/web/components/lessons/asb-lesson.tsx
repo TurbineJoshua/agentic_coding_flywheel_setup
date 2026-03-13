@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from '@/components/motion';
 import {
   Terminal,
   Save,
-  FolderSync,
   Clock,
   Play,
   Shield,
@@ -21,6 +20,7 @@ import {
   FileCheck,
   Copy,
   Layers,
+  FolderSync,
 } from 'lucide-react';
 import {
   Section,
@@ -802,7 +802,7 @@ function InteractiveBackupRestoreImpl() {
       }, (totalLines + 1) * lineDelay);
       timersRef.current.push(doneTimer);
     }, 0);
-  }, [phase, scenario.terminalLines.length, isVerifyScenario, resetScenario]);
+  }, [phase, scenario, isVerifyScenario, resetScenario]);
 
   // Determine which panels to show based on scenario
   const showTimeline = scenario.id === 'scheduled' || scenario.id === 'pre-deploy';
@@ -824,7 +824,14 @@ function InteractiveBackupRestoreImpl() {
   return (
     <div className="relative rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl overflow-hidden">
       {/* Background glows */}
-      <div className={`absolute top-0 left-1/4 w-64 h-64 bg-${scenarioGlowColor}-500/[0.06] rounded-full blur-3xl pointer-events-none transition-colors duration-700`} />
+      <div className={`absolute top-0 left-1/4 w-64 h-64 rounded-full blur-3xl pointer-events-none transition-colors duration-700 ${
+        scenarioGlowColor === 'emerald' ? 'bg-emerald-500/[0.06]' :
+        scenarioGlowColor === 'blue' ? 'bg-blue-500/[0.06]' :
+        scenarioGlowColor === 'red' ? 'bg-red-500/[0.06]' :
+        scenarioGlowColor === 'violet' ? 'bg-violet-500/[0.06]' :
+        scenarioGlowColor === 'cyan' ? 'bg-cyan-500/[0.06]' :
+        scenarioGlowColor === 'amber' ? 'bg-amber-500/[0.06]' : 'bg-emerald-500/[0.06]'
+      }`} />
       <div className="absolute bottom-0 right-1/4 w-48 h-48 bg-blue-500/[0.04] rounded-full blur-3xl pointer-events-none" />
 
       <div className="relative p-6 space-y-5">

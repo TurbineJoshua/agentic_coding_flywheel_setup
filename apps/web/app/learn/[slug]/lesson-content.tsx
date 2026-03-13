@@ -347,7 +347,7 @@ export function LessonContent({ lesson }: Props) {
     };
   }, []);
 
-  const lessonContent = hasLoaded ? renderLessonComponent(lesson.slug) : null;
+  const lessonContent = renderLessonComponent(lesson.slug);
 
   const wizardStepSlugByLesson: Record<string, string> = {
     welcome: "launch-onboarding",
@@ -449,35 +449,6 @@ export function LessonContent({ lesson }: Props) {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [accessiblePrevLesson, accessibleNextLesson, hasLoaded, isCompleted, isLocked, handleMarkComplete, router]);
-
-  if (!hasLoaded) {
-    return (
-      <div className="min-h-screen bg-black relative overflow-x-hidden">
-        <div className="fixed inset-0 pointer-events-none">
-          <FloatingOrb className="w-[700px] h-[700px] bg-primary/10 blur-[180px] -top-48 left-1/4" />
-          <FloatingOrb className="w-[420px] h-[420px] bg-violet-500/10 blur-[120px] bottom-0 right-0" delay={2} />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,_rgba(var(--primary-rgb),0.15),_transparent)]" />
-        </div>
-
-        <div className="relative mx-auto flex min-h-screen max-w-3xl items-center justify-center px-6 py-16">
-          <div className="w-full rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.08] via-white/[0.03] to-white/[0.05] p-10 backdrop-blur-2xl">
-            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-primary/80">
-              Loading Progress
-            </p>
-            <h1 className="mb-4 text-4xl font-bold tracking-tight text-white">
-              {lesson.title}
-            </h1>
-            <p className="mb-8 text-lg leading-relaxed text-white/65">
-              Checking your saved lesson progress so this page can unlock the right navigation and completion state.
-            </p>
-            <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
-              <div className="h-full w-1/3 animate-pulse rounded-full bg-gradient-to-r from-primary via-violet-500 to-emerald-400" />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (isLocked) {
     return (
