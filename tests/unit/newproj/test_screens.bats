@@ -270,6 +270,22 @@ teardown() {
     [[ "$status" == "WARNING:"* ]]
 }
 
+@test "check_directory_status rejects existing directory without write access" {
+    source_lib "newproj_screens"
+    load_screens
+
+    local locked_dir="$TEST_DIR/locked"
+    mkdir -p "$locked_dir"
+    chmod 500 "$locked_dir"
+
+    local status
+    status=$(check_directory_status "$locked_dir") || true
+
+    chmod 700 "$locked_dir"
+
+    [[ "$status" == "ERROR:Cannot write to existing directory:"* ]]
+}
+
 @test "check_directory_status expands tilde" {
     source_lib "newproj_screens"
     load_screens

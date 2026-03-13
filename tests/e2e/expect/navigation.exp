@@ -34,7 +34,7 @@ proc send_escape {} {
 }
 
 proc send_back {} {
-    send_key "b"
+    send_escape
 }
 
 proc type_text {text} {
@@ -64,21 +64,21 @@ if {$test_type eq "back_navigation"} {
 
     # Go forward through screens
     send_enter  ;# Welcome -> Project Name
-    expect "Project Name"
+    expect "Choose a Project Name"
 
     type_text "nav-test"
     send_enter  ;# Project Name -> Directory
-    expect "Project Directory"
+    expect "Choose Project Location"
 
     send_enter  ;# Directory -> Tech Stack
-    expect "Technology Stack"
+    expect "Select Tech Stack"
 
     # Now go back
     log_step "Going back from Tech Stack"
     send_back
     expect {
         timeout { puts stderr "ERROR: Back navigation failed"; exit 1 }
-        "Project Directory" { log_step "Successfully went back to Directory" }
+        "Choose Project Location" { log_step "Successfully went back to Directory" }
     }
 
     # Go back again
@@ -86,7 +86,7 @@ if {$test_type eq "back_navigation"} {
     send_back
     expect {
         timeout { puts stderr "ERROR: Back navigation failed"; exit 1 }
-        "Project Name" { log_step "Successfully went back to Project Name" }
+        "Choose a Project Name" { log_step "Successfully went back to Project Name" }
     }
 
     # Verify we can't go back from first screen
@@ -112,17 +112,17 @@ if {$test_type eq "edit_from_confirm"} {
 
     # Navigate to confirmation screen
     send_enter  ;# Welcome
-    expect "Project Name"
+    expect "Choose a Project Name"
 
     type_text "edit-test"
     send_enter
-    expect "Project Directory"
+    expect "Choose Project Location"
 
     send_enter  ;# Use default directory
-    expect "Technology Stack"
+    expect "Select Tech Stack"
 
     send_enter  ;# Skip tech
-    expect "Features"
+    expect "Select Project Features"
 
     send_enter  ;# Accept features
     expect "AGENTS.md Preview"
@@ -136,14 +136,14 @@ if {$test_type eq "edit_from_confirm"} {
     # Should go back to Project Name
     expect {
         timeout { puts stderr "ERROR: Edit mode didn't go to Project Name"; exit 1 }
-        "Project Name" { log_step "Successfully returned to Project Name for editing" }
+        "Choose a Project Name" { log_step "Successfully returned to Project Name for editing" }
     }
 
     # Verify we can change the name
     type_text "edited-project"
     send_enter
 
-    expect "Project Directory"
+    expect "Choose Project Location"
     log_step "Edit mode working correctly"
 
     # Cancel
@@ -162,11 +162,11 @@ if {$test_type eq "escape_cancel"} {
 
     # Go to a few screens
     send_enter  ;# Welcome
-    expect "Project Name"
+    expect "Choose a Project Name"
 
     type_text "cancel-test"
     send_enter
-    expect "Project Directory"
+    expect "Choose Project Location"
 
     # Press Escape to cancel
     log_step "Pressing Escape to cancel"

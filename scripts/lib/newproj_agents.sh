@@ -486,7 +486,7 @@ br ready
 
 Create issues:
 ```bash
-br create "Issue title" -t bug|feature|task -p 0-4
+br create --title="Issue title" --type=bug --priority=1
 ```
 
 Update:

@@ -92,14 +92,23 @@ handle_project_name_input() {
                 return 1
             }
         else
-            newproj_tty_printf "%s [%s]: " "Project name" "$current_name"
+            newproj_tty_printf "%s [%s]: " "Project Name" "$current_name"
             # Read from /dev/tty explicitly to avoid stdin conflicts
             # from signal handlers or subshell capture (issue #153)
-            read -r name < /dev/tty || true
+            if ! read -r name < /dev/tty; then
+                echo ""
+                return 1
+            fi
             [[ -z "$name" ]] && name="$current_name"
         fi
 
         log_input "project_name" "$name"
+
+        # Handle explicit back command for fallback mode
+        if [[ "$name" == "<back" ]]; then
+            echo ""
+            return 1
+        fi
 
         # Handle escape/back
         if [[ -z "$name" ]]; then

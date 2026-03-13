@@ -51,7 +51,7 @@ spawn bash $newproj_script --interactive
 
 expect {
     timeout { puts stderr "ERROR: Timeout at Welcome"; exit 1 }
-    "Welcome to ACFS" { log_step "At Welcome screen" }
+    "Welcome to ACFS Project Setup" { log_step "At Welcome screen" }
 }
 
 # ============================================================
@@ -61,7 +61,7 @@ if {$test_type eq "invalid_name"} {
     log_step "Testing invalid project name handling..."
 
     send_enter  ;# Welcome -> Project Name
-    expect "Project Name"
+    expect "Choose a Project Name"
 
     # Try empty name
     log_step "Trying empty name"
@@ -70,7 +70,7 @@ if {$test_type eq "invalid_name"} {
 
     # Should show error or stay on same screen
     expect {
-        "Project Name" { log_step "Correctly rejected empty name" }
+        "Choose a Project Name" { log_step "Correctly rejected empty name" }
         timeout { puts stderr "WARN: No clear rejection of empty name"; }
     }
 
@@ -81,8 +81,8 @@ if {$test_type eq "invalid_name"} {
     sleep 0.3
 
     expect {
-        "Project Name" { log_step "Correctly rejected name with spaces" }
-        "Project Directory" { log_step "Name with spaces was accepted (may be valid)" }
+        "Choose a Project Name" { log_step "Correctly rejected name with spaces" }
+        "Choose Project Location" { log_step "Name with spaces was accepted (may be valid)" }
         timeout {}
     }
 
@@ -91,7 +91,7 @@ if {$test_type eq "invalid_name"} {
     type_text "valid-name"
     send_enter
 
-    expect "Project Directory"
+    expect "Choose Project Location"
     log_step "Successfully entered valid name"
 
     send_escape
@@ -112,11 +112,11 @@ if {$test_type eq "existing_dir"} {
     log_step "Testing existing directory: $existing_dir"
 
     send_enter  ;# Welcome
-    expect "Project Name"
+    expect "Choose a Project Name"
 
     type_text "conflict-test"
     send_enter
-    expect "Project Directory"
+    expect "Choose Project Location"
 
     # Enter existing directory
     clear_line
@@ -129,7 +129,7 @@ if {$test_type eq "existing_dir"} {
         -re "(exists|already|conflict|Error)" {
             log_step "Correctly detected existing directory conflict"
         }
-        "Technology Stack" {
+        "Select Tech Stack" {
             log_step "WARN: Existing directory accepted (might be overwrite mode)"
         }
         timeout {
@@ -149,7 +149,7 @@ if {$test_type eq "validation_recovery"} {
     log_step "Testing recovery from validation errors..."
 
     send_enter  ;# Welcome
-    expect "Project Name"
+    expect "Choose a Project Name"
 
     # Enter bad name, get error, then fix it
     log_step "Entering invalid name then recovering"
@@ -162,7 +162,7 @@ if {$test_type eq "validation_recovery"} {
     send_enter
 
     expect {
-        "Project Directory" {
+        "Choose Project Location" {
             log_step "Successfully recovered from validation error"
         }
         timeout {
@@ -173,7 +173,7 @@ if {$test_type eq "validation_recovery"} {
 
     # Continue through wizard to verify state is clean
     send_enter  ;# Accept default directory
-    expect "Technology Stack"
+    expect "Select Tech Stack"
 
     log_step "Validation recovery test passed"
 

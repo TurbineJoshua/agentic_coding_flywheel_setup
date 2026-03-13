@@ -102,7 +102,7 @@ EOF
 
     if [[ "$(state_get "enable_br")" == "true" && "$beads_initialized" == "true" ]]; then
         echo "  3. Create your first task:"
-        printf "%b\n" "     ${TUI_CYAN}br create \"First feature\" -t feature${TUI_NC}"
+        printf "%b\n" "     ${TUI_CYAN}br create --title=\"First feature\" --type=feature${TUI_NC}"
         echo ""
     elif [[ "$(state_get "enable_br")" == "true" ]]; then
         echo "  3. Finish enabling Beads (optional):"

@@ -92,18 +92,34 @@ check_directory_status() {
 
     # Check if exists
     if [[ -e "$resolved" ]]; then
-        if [[ -d "$resolved" ]]; then
-            if [[ -z "$(ls -A "$resolved" 2>/dev/null)" ]]; then
-                echo "WARNING:Directory exists but is empty (will be used)"
-                return 1
-            else
-                echo "ERROR:Directory already exists and is not empty"
-                return 2
-            fi
-        else
+        if [[ ! -d "$resolved" ]]; then
             echo "ERROR:Path exists but is not a directory"
             return 2
         fi
+
+        if [[ ! -r "$resolved" || ! -x "$resolved" ]]; then
+            echo "ERROR:Cannot inspect existing directory: $resolved"
+            return 2
+        fi
+
+        if [[ ! -w "$resolved" ]]; then
+            echo "ERROR:Cannot write to existing directory: $resolved"
+            return 2
+        fi
+
+        local first_entry=""
+        first_entry=$(find "$resolved" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null) || {
+            echo "ERROR:Cannot inspect existing directory: $resolved"
+            return 2
+        }
+
+        if [[ -z "$first_entry" ]]; then
+            echo "WARNING:Directory exists but is empty (will be used)"
+            return 1
+        fi
+
+        echo "ERROR:Directory already exists and is not empty"
+        return 2
     fi
 
     # Check parent exists
@@ -203,11 +219,20 @@ handle_directory_input() {
             newproj_tty_printf "%s [%s]: " "Directory" "$current_dir"
             # Read from /dev/tty explicitly to avoid stdin conflicts
             # from signal handlers or subshell capture (issue #153)
-            read -r dir < /dev/tty || true
+            if ! read -r dir < /dev/tty; then
+                echo ""
+                return 1
+            fi
             [[ -z "$dir" ]] && dir="$current_dir"
         fi
 
         log_input "directory" "$dir"
+
+        # Handle explicit back command for fallback mode
+        if [[ "$dir" == "<back" ]]; then
+            echo ""
+            return 1
+        fi
 
         # Handle escape/back
         if [[ -z "$dir" ]]; then
@@ -242,7 +267,7 @@ handle_directory_input() {
                 # Warning - confirm with user
                 newproj_tty_printf "%b\n" "${TUI_WARNING}${status#WARNING:}${TUI_NC}"
                 if read_yes_no "Continue anyway?" "y"; then
-                    state_set "project_dir" "$dir"
+                    state_set "project_dir" "$(normalize_path "$dir")"
                     log_validation "directory" "$dir" "PASS" "warning_accepted"
                     valid=true
                 else

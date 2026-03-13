@@ -326,8 +326,8 @@ br ready --json
 Create issues:
 
 ```bash
-br create "Issue title" -t bug|feature|task -p 0-4 --json
-br create "Issue title" -p 1 --deps discovered-from:br-123 --json
+br create --title="Issue title" --type=bug --priority=1 --json
+br create --title="Issue title" --type=task --priority=1 --deps discovered-from:br-123 --json
 ```
 
 Update:
@@ -497,6 +497,10 @@ run_interactive_mode() {
 
     # Source the screens module
     source "$NEWPROJ_SCRIPT_DIR/newproj_screens.sh"
+
+    if [[ -z "${ACFS_SESSION_LOG:-}" ]]; then
+        init_logging
+    fi
 
     # Pre-fill state if arguments provided
     if [[ -n "$prefill_name" ]]; then

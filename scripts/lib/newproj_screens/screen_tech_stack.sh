@@ -194,8 +194,10 @@ handle_tech_stack_input() {
     selected=$(state_get "tech_stack")
 
     if [[ -z "$selected" ]]; then
-        # Try to detect from current directory
-        selected=$(detect_initial_tech_stack)
+        # Only auto-detect from the project directory already collected by the
+        # wizard. Falling back to $PWD misclassifies brand-new projects when the
+        # wizard is launched from inside some unrelated repo.
+        selected=$(detect_initial_tech_stack "$(state_get "project_dir")")
         if [[ -n "$selected" ]]; then
             state_set "detected_tech" "$selected"
         fi
@@ -297,7 +299,7 @@ handle_tech_stack_input() {
                     # Clear selection
                     selected=""
                     ;;
-                'back'|'b')
+                'back'|'b'|'<back')
                     echo ""
                     return 1
                     ;;
@@ -305,7 +307,7 @@ handle_tech_stack_input() {
                     # Toggle by numbers
                     for num in $input; do
                         if [[ "$num" =~ ^[0-9]+$ ]] && [[ "$num" -ge 1 ]] && [[ "$num" -le ${#TECH_STACK_OPTIONS[@]} ]]; then
-                            local opt="${TECH_STACK_OPTIONS[$((10#num - 1))]}"
+                            local opt="${TECH_STACK_OPTIONS[$((10#$num - 1))]}"
                             local key="${opt%%:*}"
                             selected=$(toggle_option "$key" "$selected")
                         fi

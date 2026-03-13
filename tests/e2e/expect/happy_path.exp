@@ -54,7 +54,7 @@ spawn bash $newproj_script --interactive
 log_step "Waiting for Welcome screen..."
 expect {
     timeout { puts stderr "ERROR: Timeout waiting for Welcome screen"; exit 1 }
-    "Welcome to ACFS" { log_step "Welcome screen detected" }
+    "Welcome to ACFS Project Setup" { log_step "Welcome screen detected" }
 }
 
 # Press Enter to continue
@@ -67,7 +67,7 @@ send_enter
 log_step "Waiting for Project Name screen..."
 expect {
     timeout { puts stderr "ERROR: Timeout waiting for Project Name screen"; exit 1 }
-    "Project Name" { log_step "Project Name screen detected" }
+    "Choose a Project Name" { log_step "Project Name screen detected" }
 }
 
 # Type project name and press Enter
@@ -81,7 +81,7 @@ send_enter
 log_step "Waiting for Directory screen..."
 expect {
     timeout { puts stderr "ERROR: Timeout waiting for Directory screen"; exit 1 }
-    "Project Directory" { log_step "Directory screen detected" }
+    "Choose Project Location" { log_step "Directory screen detected" }
 }
 
 # Clear default and type custom directory
@@ -97,7 +97,7 @@ send_enter
 log_step "Waiting for Tech Stack screen..."
 expect {
     timeout { puts stderr "ERROR: Timeout waiting for Tech Stack screen"; exit 1 }
-    "Technology Stack" { log_step "Tech Stack screen detected" }
+    "Select Tech Stack" { log_step "Tech Stack screen detected" }
 }
 
 # Press Enter to skip tech selection (use defaults)
@@ -110,7 +110,7 @@ send_enter
 log_step "Waiting for Features screen..."
 expect {
     timeout { puts stderr "ERROR: Timeout waiting for Features screen"; exit 1 }
-    "Features" { log_step "Features screen detected" }
+    "Select Project Features" { log_step "Features screen detected" }
 }
 
 # Press Enter to accept default features
@@ -149,14 +149,14 @@ send_key "c"
 log_step "Waiting for Progress screen..."
 expect {
     timeout { puts stderr "ERROR: Timeout waiting for Progress screen"; exit 1 }
-    "Creating Project" { log_step "Progress screen detected" }
+    "Creating Project..." { log_step "Progress screen detected" }
 }
 
 # Wait for completion
 log_step "Waiting for project creation to complete..."
 expect {
     timeout { puts stderr "ERROR: Timeout waiting for project creation"; exit 1 }
-    "Project Created" { log_step "Project created successfully!" }
+    "Project Created!" { log_step "Project created successfully!" }
 }
 
 # ============================================================
@@ -165,7 +165,7 @@ expect {
 log_step "Waiting for Success screen..."
 expect {
     timeout { puts stderr "ERROR: Timeout waiting for Success screen"; exit 1 }
-    "Project Created" { log_step "Success screen detected" }
+    "PROJECT CREATED SUCCESSFULLY" { log_step "Success screen detected" }
 }
 
 # Press 'q' to quit
