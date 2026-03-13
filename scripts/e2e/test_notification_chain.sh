@@ -303,7 +303,7 @@ test_7_workflow_dispatches_configured() {
         for event in "installer-updated" "installer-removed" "installer-added"; do
             if grep -q "$event" "$workflow_file"; then
                 log "INFO" "  Found event type: $event"
-                ((events_found++))
+                ((events_found++)) || true
             fi
         done
 
@@ -473,25 +473,25 @@ main() {
     preflight
 
     # Run static tests (no API calls needed)
-    test_4_workflow_exists || ((failed++))
-    test_5_checksums_yaml_valid || ((failed++))
-    test_6_security_scan_exists || ((failed++))
-    test_7_workflow_dispatches_configured || ((failed++))
+    test_4_workflow_exists || ((failed++)) || true
+    test_5_checksums_yaml_valid || ((failed++)) || true
+    test_6_security_scan_exists || ((failed++)) || true
+    test_7_workflow_dispatches_configured || ((failed++)) || true
 
     # Tests that send dispatch events (need authenticated gh)
     if [[ "$DRY_RUN" != "true" ]]; then
-        test_1_matching_checksum || ((failed++))
-        test_2_installer_removed_unknown || ((failed++))
-        test_3_malformed_payload || ((failed++))
+        test_1_matching_checksum || ((failed++)) || true
+        test_2_installer_removed_unknown || ((failed++)) || true
+        test_3_malformed_payload || ((failed++)) || true
     else
         log "INFO" "Skipping dispatch tests (DRY_RUN=true)"
     fi
 
     # Optional: Tests that create PRs
     if [[ "$RUN_PR_TESTS" == "true" ]]; then
-        test_pr_mismatched_checksum || ((failed++))
-        test_pr_installer_added || ((failed++))
-        test_pr_idempotency || ((failed++))
+        test_pr_mismatched_checksum || ((failed++)) || true
+        test_pr_installer_added || ((failed++)) || true
+        test_pr_idempotency || ((failed++)) || true
     else
         log "INFO" "Skipping PR-creating tests. Set RUN_PR_TESTS=true to enable"
     fi

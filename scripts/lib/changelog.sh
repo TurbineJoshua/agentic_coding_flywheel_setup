@@ -291,10 +291,16 @@ parse_duration() {
     local duration="${2:-days}"
 
     case "${duration,,}" in
-        d|D) echo "$((10#$num))" ;;
-        w|W) echo "$((10#$num * 7))" ;;
-        m|M) echo "$((10#$num * 30))" ;;
-        *) echo "$((10#$duration))" ;;  # Assume days if no unit
+        d|D|days) echo "$((10#$num))" ;;
+        w|W|weeks) echo "$((10#$num * 7))" ;;
+        m|M|months) echo "$((10#$num * 30))" ;;
+        *) 
+            if [[ "$num" =~ ^[0-9]+$ ]]; then
+                echo "$((10#$num))"
+            else
+                echo "1"
+            fi
+            ;;
     esac
 }
 

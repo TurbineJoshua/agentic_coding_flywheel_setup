@@ -415,7 +415,7 @@ spinner() {
         local frame="${SPINNER_FRAMES[$((i % frame_count))]}"
         printf "\r%s %s" "$frame" "$message"
         sleep 0.1
-        ((i++))
+        ((i++)) || true
     done
 }
 
@@ -551,7 +551,7 @@ read_selection() {
         local i=1
         for opt in "${options[@]}"; do
             newproj_tty_printf "%s\n" "  $i) $opt"
-            ((i++))
+            ((i++)) || true
         done
 
         newproj_tty_printf "%s" "Enter number [1-${#options[@]}]: "
@@ -585,7 +585,7 @@ read_checkbox() {
         local i=1
         for opt in "${options[@]}"; do
             newproj_tty_printf "%s\n" "  $i) $opt"
-            ((i++))
+            ((i++)) || true
         done
 
         newproj_tty_printf "%s" "Select: "

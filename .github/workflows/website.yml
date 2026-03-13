@@ -33,7 +33,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-manifest-${{ hashFiles('packages/manifest/bun.lock') }}
+          key: ${{ runner.os }}-bun-manifest-${{ hashFiles('bun.lock') }}
           restore-keys: |
             ${{ runner.os }}-bun-manifest-
 

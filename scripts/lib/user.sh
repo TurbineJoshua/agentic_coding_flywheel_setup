@@ -375,7 +375,7 @@ prompt_ssh_key() {
     local pubkey=""
     if [[ "$prompt_fd" == "stdin" ]]; then
         echo -n "Paste your public key: "
-        read -r pubkey || true
+        read -r pubkey < /dev/tty || true
     else
         # When running via curl | bash, stdin is the script content.
         # We opened FD 3 above so we can safely read from the controlling TTY.

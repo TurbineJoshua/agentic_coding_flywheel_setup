@@ -881,7 +881,7 @@ confirm_resume() {
         else
             # Fallback to read prompt
             if [[ -t 0 ]]; then
-                read -r -p "Choice [R/f/a]: " choice
+                read -r -p "Choice [R/f/a]: " choice < /dev/tty
             else
                 read -r -p "Choice [R/f/a]: " choice < /dev/tty
             fi
@@ -1974,7 +1974,7 @@ state_handle_invalid() {
 
             local response=""
             if [[ -t 0 ]]; then
-                read -r -p "Start fresh? [Y/n] " response
+                read -r -p "Start fresh? [Y/n] " response < /dev/tty
             elif [[ -r /dev/tty ]]; then
                 read -r -p "Start fresh? [Y/n] " response < /dev/tty
             else
@@ -2010,7 +2010,7 @@ state_handle_invalid() {
 
             local response=""
             if [[ -t 0 ]]; then
-                read -r -p "Start fresh install? [Y/n] " response
+                read -r -p "Start fresh install? [Y/n] " response < /dev/tty
             elif [[ -r /dev/tty ]]; then
                 read -r -p "Start fresh install? [Y/n] " response < /dev/tty
             else
@@ -2047,7 +2047,7 @@ state_handle_invalid() {
 
             local response=""
             if [[ -t 0 ]]; then
-                read -r -p "Start fresh install? [Y/n] " response
+                read -r -p "Start fresh install? [Y/n] " response < /dev/tty
             elif [[ -r /dev/tty ]]; then
                 read -r -p "Start fresh install? [Y/n] " response < /dev/tty
             else

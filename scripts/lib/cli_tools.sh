@@ -110,7 +110,7 @@ _fetch_github_version() {
                 elif command -v python3 &>/dev/null; then
                     tag=$(echo "$json" | python3 -c "import sys, json; print(json.load(sys.stdin).get('tag_name', ''))" 2>/dev/null)
                 else
-                    tag=$(echo "$json" | grep -o '"tag_name": *"[^"]*"' | head -n1 | cut -d'"' -f4)
+                    tag=$(echo "$json" | { grep -o '"tag_name": *"[^"]*"' || true; } | head -n1 | cut -d'"' -f4)
                 fi
             fi
         fi

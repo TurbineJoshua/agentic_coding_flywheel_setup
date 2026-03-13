@@ -1065,9 +1065,9 @@ check_shell() {
     fi
 
     if [[ -d "$plugins_dir/zsh-syntax-highlighting" ]]; then
-        check "shell.plugins.zsh_syntax_highlighting" "zsh-syntax-highlighting" "pass"
+        check "shell.plugins.zsh_syntax_highlightinging" "zsh-syntax-highlighting" "pass"
     else
-        check "shell.plugins.zsh_syntax_highlighting" "zsh-syntax-highlighting" "warn" "not installed" \
+        check "shell.plugins.zsh_syntax_highlightinging" "zsh-syntax-highlighting" "warn" "not installed" \
             "git clone https://github.com/zsh-users/zsh-syntax-highlighting \${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting"
     fi
 
@@ -1295,7 +1295,7 @@ check_cloud() {
 
     # Check main sshd_config (allow leading whitespace, handle commented lines)
     if [[ -f /etc/ssh/sshd_config ]]; then
-        keepalive_interval=$(grep -E '^[[:space:]]*ClientAliveInterval[[:space:]]+[0-9]+' /etc/ssh/sshd_config 2>/dev/null | grep -v '^[[:space:]]*#' | tail -n1 | awk '{print $2}')
+        keepalive_interval=$(grep -E '^[[:space:]]*ClientAliveInterval[[:space:]]+[0-9]+' /etc/ssh/sshd_config 2>/dev/null | { grep -v '^[[:space:]]*#' || true; } | tail -n1 | awk '{print $2}')
         [[ -n "$keepalive_interval" ]] && keepalive_source="sshd_config"
     fi
 
@@ -1304,7 +1304,7 @@ check_cloud() {
         for conf_file in /etc/ssh/sshd_config.d/*.conf; do
             [[ -f "$conf_file" ]] || continue
             local val
-            val=$(grep -E '^[[:space:]]*ClientAliveInterval[[:space:]]+[0-9]+' "$conf_file" 2>/dev/null | grep -v '^[[:space:]]*#' | tail -n1 | awk '{print $2}')
+            val=$(grep -E '^[[:space:]]*ClientAliveInterval[[:space:]]+[0-9]+' "$conf_file" 2>/dev/null | { grep -v '^[[:space:]]*#' || true; } | tail -n1 | awk '{print $2}')
             if [[ -n "$val" ]]; then
                 keepalive_interval="$val"
                 keepalive_source="$(basename "$conf_file")"
@@ -1738,6 +1738,11 @@ _doctor_run_manifest_check() {
                 sudo -n -u "$target_user" env HOME="$target_home" PATH="$target_path" bash -o pipefail -c "$cmd"
                 return $?
             fi
+            # Absolute fallback
+            if [[ $EUID -eq 0 ]]; then
+                su "$target_user" -c "env HOME=$(printf '%q' "$target_home") PATH=$(printf '%q' "$target_path") bash -o pipefail -c $(printf '%q' "$cmd")"
+                return $?
+            fi
             return 1
             ;;
         root)
@@ -2013,7 +2018,7 @@ deep_check_stack_tools() {
         "deep.stack.fsfs" \
         "FrankenSearch operational probe" \
         "fsfs" \
-        "Run: fsfs status" \
+        "timed out running: fsfs status" \
         "fsfs status" \
         "fsfs version" \
         "fsfs --help"
@@ -3218,7 +3223,7 @@ main() {
                 echo "  - Cloud CLI authentication (vault, wrangler, etc.)"
                 echo ""
                 echo "Deep checks are cached for 5 minutes by default."
-                echo "Use --no-cache to force fresh checks."
+                echo "Use --no-cache to force fresh deep checks."
                 echo ""
                 echo "Fix mode applies safe, reversible fixes for common issues:"
                 echo "  - PATH ordering in shell config"

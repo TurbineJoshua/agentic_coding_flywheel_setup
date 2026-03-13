@@ -71,7 +71,7 @@ render_features_screen() {
         echo -e "  $i) $checkbox ${color}$name${TUI_NC}"
         echo -e "     ${TUI_GRAY}$desc${TUI_NC}"
         echo ""
-        ((i++))
+        ((i++)) || true
     done
 
     echo -e "${TUI_GRAY}Enter numbers to toggle (e.g., 1 3), 'all', 'none', or press Enter when done${TUI_NC}"

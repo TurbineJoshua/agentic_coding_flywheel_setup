@@ -111,7 +111,7 @@ discover_lessons() {
 
         # Extract title from first "# " line
         local title
-        title=$(grep -m1 "^# " "$file" 2>/dev/null | sed 's/^# //' | head -n 1)
+        title=$({ grep -m1 "^# " "$file" 2>/dev/null || true; } | sed 's/^# //' | head -n 1)
         # Fallback to filename if no title found
         if [[ -z "$title" ]]; then
             title="${basename%.md}"
@@ -1565,11 +1565,11 @@ render_markdown() {
 show_celebration() {
     local idx=$1
     local title="${LESSON_TITLES[$idx]}"
-    local summaries="${LESSON_SUMMARIES[$idx]:-}"
     local stats completed_count total
     local next_idx=""
     local lesson_number=""
     lesson_number="$(get_lesson_number "$idx" || printf '%d' "$((idx + 1))")"
+    local summaries="${LESSON_SUMMARIES[$lesson_number]:-}"
     stats=$(calc_progress_stats)
     IFS='|' read -r completed_count total _ _ <<< "$stats"
     if [[ -z "$summaries" ]]; then

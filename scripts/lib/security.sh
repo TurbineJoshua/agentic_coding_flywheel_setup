@@ -861,7 +861,7 @@ handle_all_checksum_mismatches() {
 
     local choice
     if [[ -t 0 ]]; then
-        read -r -p "Choice [s/A]: " choice
+        read -r -p "Choice [s/A]: " choice < /dev/tty
     elif [[ -r /dev/tty ]]; then
         read -r -p "Choice [s/A]: " choice < /dev/tty
     else
@@ -1049,7 +1049,7 @@ handle_checksum_mismatch() {
 
     local choice
     if [[ -t 0 ]]; then
-        read -r -p "Choice [s/A]: " choice
+        read -r -p "Choice [s/A]: " choice < /dev/tty
     elif [[ -r /dev/tty ]]; then
         read -r -p "Choice [s/A]: " choice < /dev/tty
     else

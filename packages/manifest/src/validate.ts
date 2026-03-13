@@ -114,7 +114,8 @@ export function detectDependencyCycles(manifest: Manifest): ValidationError[] {
       // Extract just the cycle portion
       const cyclePath = [...path.slice(cycleStart), moduleId];
       // Create sorted key for deduplication WITHOUT mutating cyclePath
-      const cycleKey = [...cyclePath].sort().join(',');
+      // Use Set to remove the duplicate start/end node so a->b->c->a and b->c->a->b produce the same key
+      const cycleKey = [...new Set(cyclePath)].sort().join(',');
 
       if (!reportedCycles.has(cycleKey)) {
         reportedCycles.add(cycleKey);

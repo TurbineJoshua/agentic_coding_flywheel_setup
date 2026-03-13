@@ -215,7 +215,7 @@ verify_state_integrity() {
     if [[ -f "$ACFS_CHANGES_FILE" ]]; then
         local line_num=0
         while IFS= read -r line; do
-            ((line_num++))
+            ((line_num++)) || true
 
             # Skip empty lines
             [[ -z "$line" ]] && continue
@@ -223,7 +223,7 @@ verify_state_integrity() {
             # Verify JSON is valid
             if ! echo "$line" | jq -e . >/dev/null 2>&1; then
                 log_error "[INTEGRITY] Invalid JSON at line $line_num in changes.jsonl"
-                ((errors++))
+                ((errors++)) || true
                 continue
             fi
 
@@ -237,7 +237,7 @@ verify_state_integrity() {
                     log_error "[INTEGRITY] Checksum mismatch at line $line_num"
                     log_error "  Stored:   $stored_checksum"
                     log_error "  Computed: $computed_checksum"
-                    ((errors++))
+                    ((errors++)) || true
                 fi
             fi
         done < "$ACFS_CHANGES_FILE"
@@ -249,7 +249,7 @@ verify_state_integrity() {
             [[ -z "$line" ]] && continue
             if ! echo "$line" | jq -e . >/dev/null 2>&1; then
                 log_error "[INTEGRITY] Invalid JSON in undos.jsonl"
-                ((errors++))
+                ((errors++)) || true
             fi
         done < "$ACFS_UNDOS_FILE"
     fi
@@ -268,7 +268,7 @@ verify_state_integrity() {
                     actual_checksum=$(sha256sum "$backup_path" | cut -d' ' -f1)
                     if [[ "$actual_checksum" != "$expected_checksum" ]]; then
                         log_error "[INTEGRITY] Backup file corrupted: $backup_path"
-                        ((errors++))
+                        ((errors++)) || true
                     fi
                 else
                     log_warn "[INTEGRITY] Backup file missing: $backup_path"
@@ -793,7 +793,9 @@ undo_change() {
     # Execute undo
     local undo_exit_code=0
     if [[ "$requires_root" == "true" ]]; then
-        sudo bash -c "$undo_cmd" || undo_exit_code=$?
+        local sudo_cmd=""
+        [[ $EUID -ne 0 ]] && command -v sudo &>/dev/null && sudo_cmd="sudo"
+        $sudo_cmd bash -c "$undo_cmd" || undo_exit_code=$?
     else
         bash -c "$undo_cmd" || undo_exit_code=$?
     fi
@@ -848,7 +850,7 @@ rollback_all_on_failure() {
         log_info "Rolling back: $desc"
         if ! undo_change "$change_id" true true; then
             log_warn "  Failed to rollback $change_id (continuing anyway)"
-            ((rollback_failed++))
+            ((rollback_failed++)) || true
         fi
     done
 
@@ -1025,7 +1027,7 @@ acfs_undo_command() {
     local failed=0
     for change_id in "${change_ids[@]}"; do
         if ! undo_change "$change_id" "$force"; then
-            ((failed++))
+            failed=$((failed + 1))
         fi
     done
 
@@ -1053,7 +1055,7 @@ cleanup_old_backups() {
     local deleted=0
     while IFS= read -r -d '' file; do
         rm -f "$file"
-        ((deleted++))
+        ((deleted++)) || true
     done < <(find "$ACFS_BACKUPS_DIR" -type f -mtime +"$days" -print0 2>/dev/null)
 
     log_info "Deleted $deleted old backup files"

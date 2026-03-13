@@ -68,20 +68,24 @@ declare -A SERVICE_STATUS
 # Helper Functions
 # ============================================================
 
-# Run a command (argv) as target user.
-#
-# Prefer argv mode to avoid quoting pitfalls (paths with spaces, etc.).
+# Run a command as target user
 run_as_user() {
-    if [[ $# -lt 1 ]]; then
-        return 0
-    fi
-
     if [[ "$(whoami)" == "$TARGET_USER" ]]; then
         "$@"
         return $?
     fi
 
-    sudo -u "$TARGET_USER" -H "$@"
+    if command -v sudo &>/dev/null; then
+        sudo -u "$TARGET_USER" -H "$@"
+        return $?
+    fi
+    
+    if command -v runuser &>/dev/null; then
+        runuser -u "$TARGET_USER" -- "$@"
+        return $?
+    fi
+    
+    su "$TARGET_USER" -c "$(printf '%q ' "$@")"
 }
 
 # Run a shell string as target user (use for pipelines/redirections).
@@ -89,8 +93,12 @@ run_as_user_shell() {
     local cmd="$1"
     if [[ "$(whoami)" == "$TARGET_USER" ]]; then
         bash -c "$cmd"
-    else
+    elif command -v sudo &>/dev/null; then
         sudo -u "$TARGET_USER" -H bash -c "$cmd"
+    elif command -v runuser &>/dev/null; then
+        runuser -u "$TARGET_USER" -- bash -c "$cmd"
+    else
+        su "$TARGET_USER" -c "bash -c $(printf '%q' "$cmd")"
     fi
 }
 
@@ -216,7 +224,7 @@ select_dcg_packs() {
             local user_input=""
             for num in $input; do
                 if [[ "$num" =~ ^[0-9]+$ ]] && [[ "$num" -ge 1 ]] && [[ "$num" -le "${#options[@]}" ]]; then
-                    user_input+="$num"
+                    user_input+="$num "
                 fi
             done
             local selected_lines=""
@@ -1016,8 +1024,10 @@ setup_postgres() {
     else
         gum_warn "PostgreSQL service is not running"
         if gum_confirm "Start PostgreSQL service?"; then
-            sudo systemctl start postgresql
-            sudo systemctl enable postgresql
+            local sudo_cmd=""
+            [[ $EUID -ne 0 ]] && command -v sudo &>/dev/null && sudo_cmd="sudo"
+            $sudo_cmd systemctl start postgresql
+            $sudo_cmd systemctl enable postgresql
             gum_success "PostgreSQL service started and enabled"
         fi
     fi

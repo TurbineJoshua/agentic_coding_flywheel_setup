@@ -587,7 +587,7 @@ handle_existing_installation() {
     echo ""
 
     local choice
-    read -rp "Enter choice [1-3]: " choice
+    read -rp "Enter choice [1-3]: " choice < /dev/tty
 
     case "$choice" in
         1)
@@ -661,19 +661,19 @@ verify_installation() {
     # Check config directory
     if [[ ! -d "$HOME/.acfs" ]]; then
         log_warn "[VERIFY] Config directory missing"
-        ((errors++))
+        ((errors++)) || true
     fi
 
     # Check version file
     if [[ ! -f "$HOME/.acfs/version" ]]; then
         log_warn "[VERIFY] Version file missing"
-        ((errors++))
+        ((errors++)) || true
     fi
 
     # Check .local/bin exists
     if [[ ! -d "$HOME/.local/bin" ]]; then
         log_warn "[VERIFY] ~/.local/bin directory missing"
-        ((errors++))
+        ((errors++)) || true
     fi
 
     if [[ $errors -gt 0 ]]; then

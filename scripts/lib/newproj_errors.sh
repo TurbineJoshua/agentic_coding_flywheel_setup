@@ -217,8 +217,7 @@ handle_interrupt() {
 
     # Read with timeout to prevent hanging
     local confirm=""
-    read -r -t 30 -p "Cancel wizard? (y/N) " confirm || true
-
+    read -r -t 30 -p "Cancel wizard? (y/N) " confirm < /dev/tty || true
     if [[ "$confirm" =~ ^[Yy]$ ]]; then
         log_info "User confirmed cancellation" 2>/dev/null || true
         echo -e "${NEWPROJ_RED}Wizard cancelled.${NEWPROJ_NC}"

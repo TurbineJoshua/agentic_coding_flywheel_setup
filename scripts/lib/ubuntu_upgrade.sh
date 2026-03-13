@@ -43,9 +43,18 @@ declare -f log_info &>/dev/null || log_info() { log_detail "$1"; }
 # Returns: version number on stdout, or empty if not Ubuntu
 ubuntu_get_version_number() {
     local version major minor
-    version=$(ubuntu_get_version_string)
+    version=$(ubuntu_get_version_string) || return 1
+    if [[ -z "$version" ]]; then
+        return 1
+    fi
     major="${version%%.*}"
     minor="${version#*.}"
+    
+    # Handle single-part versions or completely malformed ones safely
+    if [[ -z "$major" ]] || [[ -z "$minor" ]] || ! [[ "$major" =~ ^[0-9]+$ ]] || ! [[ "$minor" =~ ^[0-9]+$ ]]; then
+        return 1
+    fi
+    
     # Using 10# to force base 10 and avoid octal interpretation of leading zeros
     printf "%d%02d" "$((10#${major}))" "$((10#${minor}))"
 }
@@ -196,11 +205,11 @@ ubuntu_get_next_upgrade() {
     #   "New release '24.04.1 LTS' available."
     # Extract the first major.minor pair inside the quotes.
     local release_line
-    release_line=$(echo "$output" | grep -oE "New release '[^']+' available" | head -n 1)
+    release_line=$(echo "$output" | { grep -oE "New release '[^']+' available" || true; } | head -n 1)
 
     if [[ -n "$release_line" ]]; then
         local version
-        version=$(echo "$release_line" | grep -oE "[0-9]+\.[0-9]+" | head -n 1)
+        version=$(echo "$release_line" | { grep -oE "[0-9]+\.[0-9]+" || true; } | head -n 1)
         if [[ -n "$version" ]]; then
             echo "$version"
             return 0
@@ -1449,7 +1458,7 @@ ubuntu_confirm_upgrade() {
 
     local response=""
     if [[ -t 0 ]]; then
-        read -r -p "Proceed with Ubuntu upgrade? [y/N] " response
+        read -r -p "Proceed with Ubuntu upgrade? [y/N] " response < /dev/tty
     elif [[ -r /dev/tty ]]; then
         read -r -p "Proceed with Ubuntu upgrade? [y/N] " response < /dev/tty
     else

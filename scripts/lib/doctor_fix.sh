@@ -679,14 +679,17 @@ fix_ssh_server() {
                 return 0
             fi
 
+            local sudo_cmd=""
+            [[ $EUID -ne 0 ]] && command -v sudo &>/dev/null && sudo_cmd="sudo"
+
             # Installed but not running - enable and start
             if [[ "$DOCTOR_FIX_DRY_RUN" == "true" ]]; then
-                FIXES_DRY_RUN+=("fix.ssh.server|Enable and start SSH server|/etc/ssh/sshd_config|sudo systemctl enable --now ssh")
+                FIXES_DRY_RUN+=("fix.ssh.server|Enable and start SSH server|/etc/ssh/sshd_config|$sudo_cmd systemctl enable --now ssh")
                 doctor_fix_log DRY "Enable and start SSH server"
                 return 0
             fi
 
-            if sudo systemctl enable --now ssh 2>/dev/null || sudo systemctl enable --now sshd 2>/dev/null; then
+            if $sudo_cmd systemctl enable --now ssh 2>/dev/null || $sudo_cmd systemctl enable --now sshd 2>/dev/null; then
                 doctor_fix_log INFO "Enabled and started SSH server"
                 FIXES_APPLIED+=("fix.ssh.server|Enabled and started SSH server")
                 FIX_APPLIED=$((FIX_APPLIED + 1))
@@ -700,15 +703,18 @@ fix_ssh_server() {
         return 0
     fi
 
+    local sudo_cmd=""
+    [[ $EUID -ne 0 ]] && command -v sudo &>/dev/null && sudo_cmd="sudo"
+
     # Not installed - install it
     if [[ "$DOCTOR_FIX_DRY_RUN" == "true" ]]; then
-        FIXES_DRY_RUN+=("fix.ssh.server|Install openssh-server|/etc/ssh/sshd_config|sudo apt-get install -y openssh-server")
+        FIXES_DRY_RUN+=("fix.ssh.server|Install openssh-server|/etc/ssh/sshd_config|$sudo_cmd apt-get install -y openssh-server")
         doctor_fix_log DRY "Install openssh-server"
         return 0
     fi
 
-    if sudo apt-get install -y openssh-server 2>/dev/null; then
-        sudo systemctl enable --now ssh 2>/dev/null || sudo systemctl enable --now sshd 2>/dev/null || true
+    if $sudo_cmd apt-get install -y openssh-server 2>/dev/null; then
+        $sudo_cmd systemctl enable --now ssh 2>/dev/null || $sudo_cmd systemctl enable --now sshd 2>/dev/null || true
         doctor_fix_log INFO "Installed and enabled openssh-server"
         FIXES_APPLIED+=("fix.ssh.server|Installed and enabled openssh-server")
         FIX_APPLIED=$((FIX_APPLIED + 1))
@@ -729,10 +735,13 @@ fix_ssh_keepalive() {
     local check_id="$1"
     local sshd_config="/etc/ssh/sshd_config"
 
+    local sudo_cmd=""
+    [[ $EUID -ne 0 ]] && command -v sudo &>/dev/null && sudo_cmd="sudo"
+
     # Guard: sshd_config must exist
     if [[ ! -f "$sshd_config" ]]; then
         doctor_fix_log WARN "sshd_config not found, install openssh-server first"
-        FIXES_MANUAL+=("$check_id|Install openssh-server first|sudo apt-get install -y openssh-server")
+        FIXES_MANUAL+=("$check_id|Install openssh-server first|$sudo_cmd apt-get install -y openssh-server")
         FIX_MANUAL=$((FIX_MANUAL + 1))
         return 1
     fi
@@ -761,10 +770,10 @@ fix_ssh_keepalive() {
         echo "# ACFS: SSH keepalive settings (added by doctor --fix)"
         echo "ClientAliveInterval 60"
         echo "ClientAliveCountMax 3"
-    } | sudo tee -a "$sshd_config" > /dev/null
+    } | $sudo_cmd tee -a "$sshd_config" > /dev/null
 
     # Restart sshd to apply
-    sudo systemctl reload ssh 2>/dev/null || sudo systemctl reload sshd 2>/dev/null || true
+    $sudo_cmd systemctl reload ssh 2>/dev/null || $sudo_cmd systemctl reload sshd 2>/dev/null || true
 
     doctor_fix_log INFO "Configured SSH keepalive (ClientAliveInterval 60, ClientAliveCountMax 3)"
     FIXES_APPLIED+=("fix.ssh.keepalive|Configured SSH keepalive settings")

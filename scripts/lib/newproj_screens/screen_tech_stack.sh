@@ -152,7 +152,7 @@ render_tech_stack_screen() {
         fi
 
         echo -e "  $i) $checkbox ${color}$name${TUI_NC}"
-        ((i++))
+        ((i++)) || true
     done
 
     echo ""

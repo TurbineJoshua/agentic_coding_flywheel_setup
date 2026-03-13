@@ -1145,7 +1145,7 @@ update_apt() {
     local upgradable_list=""
     local upgrade_count=0
     if upgradable_list=$(apt list --upgradable 2>/dev/null | grep -v "^Listing"); then
-        upgrade_count=$(echo "$upgradable_list" | grep -c . || echo 0)
+        upgrade_count=$(echo "$upgradable_list" | { grep -c . || true; })
         if [[ $upgrade_count -gt 0 ]]; then
             log_to_file "Upgradable packages ($upgrade_count):"
             log_to_file "$upgradable_list"
@@ -1261,10 +1261,12 @@ fix_apt_issues() {
 
     # Fix interrupted dpkg (check if there are pending updates)
     if ls /var/lib/dpkg/updates/* &>/dev/null; then
+        local sudo_cmd
+        sudo_cmd=$(get_sudo)
         log_item "fix" "dpkg" "configuring interrupted packages"
-        log_to_file "Running: sudo dpkg --configure -a"
+        log_to_file "Running: $sudo_cmd dpkg --configure -a"
         local dpkg_output
-        dpkg_output=$(sudo dpkg --configure -a 2>&1) || true
+        dpkg_output=$($sudo_cmd dpkg --configure -a 2>&1) || true
         [[ -n "$dpkg_output" ]] && log_to_file "dpkg output: $dpkg_output"
     fi
 
@@ -1286,9 +1288,11 @@ fix_apt_issues() {
 
     if [[ "$needs_fix" == "true" ]]; then
         log_item "fix" "apt" "fixing broken dependencies"
-        log_to_file "Running: sudo apt-get -f install -y"
+        local sudo_cmd
+        sudo_cmd=$(get_sudo)
+        log_to_file "Running: $sudo_cmd apt-get -f install -y"
         local apt_output
-        apt_output=$(sudo apt-get -f install -y 2>&1) || true
+        apt_output=$($sudo_cmd apt-get -f install -y 2>&1) || true
         [[ -n "$apt_output" ]] && log_to_file "apt-get -f output: $apt_output"
     fi
 }

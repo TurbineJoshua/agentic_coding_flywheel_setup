@@ -133,30 +133,30 @@ autofix_unattended_upgrades_fix() {
 
     # STEP 1: Stop unattended-upgrades service
     if ! _autofix_stop_unattended_service; then
-        ((errors++))
+        ((errors++)) || true
     fi
 
     # STEP 2: Wait for running processes to finish (with timeout)
     if ! _autofix_wait_for_apt_processes; then
         # STEP 3: Kill stuck processes if still running after timeout
         if ! _autofix_kill_stuck_processes; then
-            ((errors++))
+            ((errors++)) || true
         fi
     fi
 
     # STEP 4: Remove stale lock files
     if ! _autofix_remove_stale_locks; then
-        ((errors++))
+        ((errors++)) || true
     fi
 
     # STEP 5: Reconfigure dpkg in case it was interrupted
     if ! _autofix_reconfigure_dpkg; then
-        ((errors++))
+        ((errors++)) || true
     fi
 
     # STEP 6: Update apt lists
     if ! _autofix_update_apt; then
-        ((errors++))
+        ((errors++)) || true
     fi
 
     if [[ $errors -eq 0 ]]; then
@@ -173,6 +173,9 @@ autofix_unattended_upgrades_fix() {
 
 # Stop unattended-upgrades service
 _autofix_stop_unattended_service() {
+    local sudo_cmd=""
+    [[ $EUID -ne 0 ]] && command -v sudo &>/dev/null && sudo_cmd="sudo"
+
     if ! systemctl is-active unattended-upgrades &>/dev/null; then
         log_debug "[AUTO-FIX:unattended] Service not active, skipping stop"
         return 0
@@ -188,14 +191,14 @@ _autofix_stop_unattended_service() {
     record_change \
         "unattended" \
         "Stopped unattended-upgrades service (was_enabled=$was_enabled)" \
-        "sudo systemctl start unattended-upgrades" \
+        "$sudo_cmd systemctl start unattended-upgrades" \
         true \
         "warning" \
         '[]' \
         '[]' \
         '[]'
 
-    if sudo systemctl stop unattended-upgrades 2>&1; then
+    if $sudo_cmd systemctl stop unattended-upgrades 2>&1; then
         log_info "[AUTO-FIX:unattended] Stopped unattended-upgrades service"
         return 0
     else
@@ -247,9 +250,12 @@ _autofix_kill_stuck_processes() {
         '[]'
 
     # Kill each process type
-    sudo pkill -9 -x "apt" 2>/dev/null || true
-    sudo pkill -9 -x "apt-get" 2>/dev/null || true
-    sudo pkill -9 -x "dpkg" 2>/dev/null || true
+    local sudo_cmd=""
+    [[ $EUID -ne 0 ]] && command -v sudo &>/dev/null && sudo_cmd="sudo"
+    
+    $sudo_cmd pkill -9 -x "apt" 2>/dev/null || true
+    $sudo_cmd pkill -9 -x "apt-get" 2>/dev/null || true
+    $sudo_cmd pkill -9 -x "dpkg" 2>/dev/null || true
 
     # Brief wait for processes to die
     sleep 2
@@ -281,6 +287,9 @@ _autofix_remove_stale_locks() {
         fi
 
         # Record the change
+        local sudo_cmd=""
+        [[ $EUID -ne 0 ]] && command -v sudo &>/dev/null && sudo_cmd="sudo"
+
         record_change \
             "unattended" \
             "Removed stale lock file: $lock" \
@@ -291,12 +300,12 @@ _autofix_remove_stale_locks() {
             '[]' \
             '[]'
 
-        if sudo rm -f "$lock" 2>&1; then
+        if $sudo_cmd rm -f "$lock" 2>&1; then
             log_info "[AUTO-FIX:unattended] Removed stale lock: $lock"
-            ((removed++))
+            ((removed++)) || true
         else
             log_error "[AUTO-FIX:unattended] Failed to remove lock: $lock"
-            ((failed++))
+            failed=$((failed + 1))
         fi
     done
 
@@ -311,8 +320,11 @@ _autofix_remove_stale_locks() {
 _autofix_reconfigure_dpkg() {
     log_info "[AUTO-FIX:unattended] Running dpkg --configure -a"
 
+    local sudo_cmd=""
+    [[ $EUID -ne 0 ]] && command -v sudo &>/dev/null && sudo_cmd="sudo"
+
     local output
-    if output=$(sudo dpkg --configure -a 2>&1); then
+    if output=$($sudo_cmd dpkg --configure -a 2>&1); then
         if [[ -n "$output" ]]; then
             while IFS= read -r line; do
                 log_debug "[dpkg:configure] $line"
@@ -330,8 +342,11 @@ _autofix_reconfigure_dpkg() {
 _autofix_update_apt() {
     log_info "[AUTO-FIX:unattended] Running apt-get update"
 
+    local sudo_cmd=""
+    [[ $EUID -ne 0 ]] && command -v sudo &>/dev/null && sudo_cmd="sudo"
+
     local output
-    if output=$(sudo apt-get update 2>&1); then
+    if output=$($sudo_cmd apt-get update 2>&1); then
         if [[ -n "$output" ]]; then
             while IFS= read -r line; do
                 log_debug "[apt:update] $line"
@@ -374,7 +389,10 @@ autofix_unattended_upgrades_restore() {
 
     log_info "[POST-INSTALL] Re-enabling unattended-upgrades service"
 
-    if sudo systemctl start unattended-upgrades 2>&1; then
+    local sudo_cmd=""
+    [[ $EUID -ne 0 ]] && command -v sudo &>/dev/null && sudo_cmd="sudo"
+
+    if $sudo_cmd systemctl start unattended-upgrades 2>&1; then
         # Mark as auto-restored in undos file
         local restore_record
         restore_record=$(jq -cn \

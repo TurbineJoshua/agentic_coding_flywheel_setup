@@ -296,7 +296,7 @@ fi
 # 3. Count tools in PATH
 for cmd in "${_CORE_TOOLS[@]}"; do
     if command -v "$cmd" &>/dev/null; then
-        ((_tool_count++))
+        ((_tool_count++)) || true
     else
         _warnings+=("missing: $cmd")
     fi
@@ -304,7 +304,7 @@ done
 
 for cmd in "${_OPTIONAL_TOOLS[@]}"; do
     if command -v "$cmd" &>/dev/null; then
-        ((_tool_count++))
+        ((_tool_count++)) || true
     fi
 done
 
@@ -431,7 +431,7 @@ else
     if [[ ${#_warnings[@]} -gt 0 ]]; then
         _missing_count=0
         for w in "${_warnings[@]}"; do
-            [[ "$w" == missing:* ]] && ((_missing_count++))
+            [[ "$w" == missing:* ]] && ((_missing_count++)) || true
         done
         [[ $_missing_count -gt 0 ]] && _msg="$_msg, $_missing_count missing tool(s)"
         [[ -n "$_update_available" ]] && _msg="$_msg, update available"
