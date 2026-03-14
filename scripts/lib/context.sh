@@ -55,6 +55,9 @@ _json_escape() {
     s="${s//$'\n'/\\n}"    # newline -> \n
     s="${s//$'\r'/\\r}"    # carriage return -> \r
     s="${s//$'\t'/\\t}"    # tab -> \t
+    # Also escape control characters (0x00-0x1F)
+    # shellcheck disable=SC1003
+    s=$(printf '%s' "$s" | tr '\000-\037' ' ')
     printf '%s' "$s"
 }
 

@@ -494,6 +494,9 @@ _json_escape() {
     s="${s//$'\n'/\\n}" # escape newlines
     s="${s//$'\r'/\\r}" # escape CR
     s="${s//$'\t'/\\t}" # escape tabs
+    # Also escape control characters (0x00-0x1F)
+    # shellcheck disable=SC1003
+    s=$(printf '%s' "$s" | tr '\000-\037' ' ')
     printf '%s' "$s"
 }
 

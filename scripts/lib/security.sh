@@ -304,21 +304,20 @@ fetch_checksum() {
         log_error "Failed to create temp file"
         return 1
     }
+    # Ensure cleanup on return
+    trap 'rm -f "$tmp_file" 2>/dev/null' RETURN
 
     if ! acfs_download_to_file "$url" "$tmp_file" "$url"; then
         log_error "Failed to fetch $url"
-        rm -f "$tmp_file" 2>/dev/null || true
         return 1
     fi
 
     local file_sha256
     if ! file_sha256=$(calculate_file_sha256 "$tmp_file"); then
         log_error "Failed to checksum $url"
-        rm -f "$tmp_file" 2>/dev/null || true
         return 1
     fi
 
-    rm -f "$tmp_file" 2>/dev/null || true
     printf '%s\n' "$file_sha256"
 }
 
@@ -347,17 +346,17 @@ verify_checksum() {
         log_error "Failed to create temp file for $name"
         return 1
     }
+    # Ensure cleanup on return
+    trap 'rm -f "$tmp_file" 2>/dev/null' RETURN
 
     if ! acfs_download_to_file "$url" "$tmp_file" "$name"; then
         log_error "Security Error: Failed to fetch $name"
-        rm -f "$tmp_file" 2>/dev/null || true
         return 1
     fi
 
     local actual_sha256
     actual_sha256=$(calculate_file_sha256 "$tmp_file") || {
         log_error "Security Error: Failed to checksum $name"
-        rm -f "$tmp_file" 2>/dev/null || true
         return 1
     }
 
@@ -371,16 +370,13 @@ verify_checksum() {
         printf "    - End users: update ACFS to refresh checksums.yaml (re-run install.sh / update scripts)\n" >&2
         printf "    - Maintainers: regenerate checksums.yaml with:\n" >&2
         printf "        ./scripts/lib/security.sh --update-checksums > checksums.yaml\n" >&2
-        rm -f "$tmp_file" 2>/dev/null || true
         return 1
     fi
 
     log_success "Verified: $name"
     # Return the verified content (verbatim bytes) on stdout.
     cat "$tmp_file"
-    local cat_rc=$?
-    rm -f "$tmp_file" 2>/dev/null || true
-    return $cat_rc
+    return $?
 }
 
 # Fetch and run with optional verification
@@ -467,11 +463,12 @@ fetch_and_run_with_recovery() {
         log_error "Failed to create temp file for $name"
         return 1
     }
+    # Ensure cleanup on return
+    trap 'rm -f "$tmp_file" 2>/dev/null' RETURN
 
     # Fetch content to file with retries
     if ! acfs_download_to_file "$url" "$tmp_file" "$name"; then
         log_error "Error: Failed to fetch $name"
-        rm -f "$tmp_file" 2>/dev/null || true
         return 1
     fi
 
@@ -479,7 +476,6 @@ fetch_and_run_with_recovery() {
     local actual_sha256
     actual_sha256=$(calculate_file_sha256 "$tmp_file") || {
         log_error "Error: Failed to calculate checksum for $name"
-        rm -f "$tmp_file" 2>/dev/null || true
         return 1
     }
 
@@ -493,30 +489,19 @@ fetch_and_run_with_recovery() {
             0)
                 # Skip - tool was skipped, continue installation
                 log_info "Skipped: $name (checksum mismatch)"
-                rm -f "$tmp_file" 2>/dev/null || true
                 return 0
                 ;;
             1)
                 # Abort - user or policy chose to abort
-                rm -f "$tmp_file" 2>/dev/null || true
-                return 1
-                ;;
-            *)
-                # Unknown result, abort for safety
-                log_error "Unexpected handler result"
-                rm -f "$tmp_file" 2>/dev/null || true
                 return 1
                 ;;
         esac
-    else
-        log_success "Verified: $name"
     fi
 
-    # Run the installer from verified file
+    log_success "Verified: $name"
+    
+    # Run the installer
     bash "$tmp_file" "${args[@]}"
-    local run_rc=$?
-    rm -f "$tmp_file" 2>/dev/null || true
-    return $run_rc
 }
 
 # ============================================================
@@ -1196,16 +1181,16 @@ verify_all_installers_json() {
 
     # Helper function to escape strings for JSON
     _json_escape() {
-        local str="$1"
-        # Escape backslashes first, then other special characters
-        str="${str//\\/\\\\}"
-        str="${str//\"/\\\"}"
-        str="${str//$'\t'/\\t}"
-        str="${str//$'\r'/\\r}"
-        str="${str//$'\n'/\\n}"
-        str="${str//$'\b'/\\b}"
-        str="${str//$'\f'/\\f}"
-        echo -n "$str"
+        local s="$1"
+        s="${s//\\/\\\\}" # escape backslashes
+        s="${s//\"/\\\"}" # escape quotes
+        s="${s//$'\n'/\\n}" # escape newlines
+        s="${s//$'\r'/\\r}" # escape CR
+        s="${s//$'\t'/\\t}" # escape tabs
+        # Also escape control characters (0x00-0x1F)
+        # shellcheck disable=SC1003
+        s=$(printf '%s' "$s" | tr '\000-\037' ' ')
+        printf '%s' "$s"
     }
 
     for name in "${!KNOWN_INSTALLERS[@]}"; do

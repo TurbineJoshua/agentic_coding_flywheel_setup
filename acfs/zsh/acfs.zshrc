@@ -501,7 +501,7 @@ amserve() {
     return 1
   fi
 
-  am serve-http --host 127.0.0.1 --port 8765 --no-tui
+  am serve-http --host 127.0.0.1 --port 8765 --path /mcp/
 }
 
 # --- ACFS tool aliases (new tools) ---

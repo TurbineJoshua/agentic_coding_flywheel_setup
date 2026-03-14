@@ -4741,7 +4741,7 @@ NTM_CONFIG_EOF
                         unit_dir="$HOME/.config/systemd/user"
                         unit_file="$unit_dir/agent-mail.service"
                         am_bin="$(command -v am)"
-                        db_url="sqlite+aiosqlite:///${storage_root}/storage.sqlite3"
+                        db_url="sqlite:///${storage_root}/storage.sqlite3"
                         mkdir -p "$storage_root" "$unit_dir"
                         cat > "$unit_file" <<UNIT_EOF
 [Unit]
@@ -4754,8 +4754,9 @@ WorkingDirectory=$storage_root
 Environment=RUST_LOG=info
 Environment=STORAGE_ROOT=$storage_root
 Environment=DATABASE_URL=$db_url
-Environment=HTTP_PATH=/mcp/
-ExecStart=$am_bin serve-http --host 127.0.0.1 --port 8765 --path /mcp --no-auth --no-tui
+Environment=HTTP_ALLOW_LOCALHOST_UNAUTHENTICATED=true
+ExecStartPre=$am_bin migrate
+ExecStart=$am_bin serve-http --host 127.0.0.1 --port 8765 --path /mcp/
 Restart=on-failure
 RestartSec=5
 
@@ -4821,8 +4822,8 @@ UNIT_EOF
                                         RUST_LOG=info \
                                         STORAGE_ROOT="$storage_root" \
                                         DATABASE_URL="$db_url" \
-                                        HTTP_PATH=/mcp/ \
-                                        "$am_bin" serve-http --host 127.0.0.1 --port 8765 --path /mcp --no-auth --no-tui \
+                                        HTTP_ALLOW_LOCALHOST_UNAUTHENTICATED=true \
+                                        bash -c "$am_bin migrate && $am_bin serve-http --host 127.0.0.1 --port 8765 --path /mcp/" \
                                         >>"$fallback_log_file" 2>&1 < /dev/null &
                                     echo $! > "$fallback_pid_file"
                                 fi
@@ -4831,8 +4832,8 @@ UNIT_EOF
                                     RUST_LOG=info \
                                     STORAGE_ROOT="$storage_root" \
                                     DATABASE_URL="$db_url" \
-                                    HTTP_PATH=/mcp/ \
-                                    "$am_bin" serve-http --host 127.0.0.1 --port 8765 --path /mcp --no-auth --no-tui \
+                                    HTTP_ALLOW_LOCALHOST_UNAUTHENTICATED=true \
+                                    bash -c "$am_bin migrate && $am_bin serve-http --host 127.0.0.1 --port 8765 --path /mcp/" \
                                     >>"$fallback_log_file" 2>&1 < /dev/null &
                                 echo $! > "$fallback_pid_file"
                             fi

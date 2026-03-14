@@ -577,6 +577,96 @@ run_cmd_sudo() {
     run_cmd "$desc" "$@"
 }
 
+update_current_user() {
+    id -un 2>/dev/null || whoami 2>/dev/null || true
+}
+
+update_target_user() {
+    if [[ -n "${TARGET_USER:-}" ]]; then
+        printf '%s\n' "$TARGET_USER"
+        return 0
+    fi
+
+    local current_user=""
+    current_user="$(update_current_user)"
+    if [[ -n "$current_user" ]]; then
+        printf '%s\n' "$current_user"
+        return 0
+    fi
+
+    printf '%s\n' "ubuntu"
+}
+
+update_target_home() {
+    local target_user="${1:-}"
+
+    if [[ -n "${TARGET_HOME:-}" ]]; then
+        printf '%s\n' "$TARGET_HOME"
+        return 0
+    fi
+
+    if [[ "$target_user" == "root" ]]; then
+        printf '%s\n' "/root"
+        return 0
+    fi
+
+    printf '/home/%s\n' "${target_user:-ubuntu}"
+}
+
+update_target_path() {
+    local target_home="$1"
+    local target_bin="${ACFS_BIN_DIR:-$target_home/.local/bin}"
+    local current_path="${PATH:-/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin}"
+
+    printf '%s\n' "$target_bin:$target_home/.bun/bin:$target_home/.cargo/bin:$target_home/.atuin/bin:$target_home/go/bin:$current_path"
+}
+
+update_run_in_target_context() {
+    local bash_env_assignment="${1:-}"
+    shift
+
+    local target_user=""
+    local current_user=""
+    local target_home=""
+    local target_path=""
+    target_user="$(update_target_user)"
+    current_user="$(update_current_user)"
+    target_home="$(update_target_home "$target_user")"
+    target_path="$(update_target_path "$target_home")"
+
+    local -a env_args=("UV_NO_CONFIG=1" "HOME=$target_home" "PATH=$target_path")
+    [[ -n "$target_user" ]] && env_args+=("TARGET_USER=$target_user")
+    [[ -n "$target_home" ]] && env_args+=("TARGET_HOME=$target_home")
+    [[ -n "${ACFS_HOME:-}" ]] && env_args+=("ACFS_HOME=$ACFS_HOME")
+    [[ -n "$bash_env_assignment" ]] && env_args+=("$bash_env_assignment")
+
+    if [[ "$current_user" == "$target_user" ]]; then
+        if [[ -d "$target_home" ]]; then
+            (
+                cd "$target_home" || exit 1
+                env "${env_args[@]}" "$@"
+            )
+            return $?
+        fi
+
+        env "${env_args[@]}" "$@"
+        return $?
+    fi
+
+    if command -v sudo &>/dev/null; then
+        sudo -n -u "$target_user" env "${env_args[@]}" sh -c 'cd "$HOME" || exit 1; exec "$@"' _ "$@"
+        return $?
+    fi
+
+    if command -v runuser &>/dev/null; then
+        runuser -u "$target_user" -- env "${env_args[@]}" sh -c 'cd "$HOME" || exit 1; exec "$@"' _ "$@"
+        return $?
+    fi
+
+    echo "Cannot switch to target user '$target_user' (sudo/runuser unavailable)" >&2
+    return 1
+}
+
 # ============================================================
 # Migration Cleanup
 # ============================================================
@@ -752,10 +842,15 @@ update_require_security() {
     # Check for security.sh in expected locations
     local security_script=""
     local candidate=""
-    for candidate in \
-        "${ACFS_BIN_DIR:-$HOME/.local/bin}/security.sh" \
-        "${ACFS_HOME:-$HOME/.acfs}/scripts/lib/security.sh" \
-        "${ACFS_REPO_ROOT:-}/scripts/security.sh"; do
+    local -a security_candidates=(
+        "${ACFS_BIN_DIR:-$HOME/.local/bin}/security.sh"
+        "${ACFS_HOME:-$HOME/.acfs}/scripts/lib/security.sh"
+    )
+    if [[ -n "${ACFS_REPO_ROOT:-}" ]]; then
+        security_candidates+=("${ACFS_REPO_ROOT}/scripts/lib/security.sh")
+    fi
+
+    for candidate in "${security_candidates[@]}"; do
         if [[ -n "$candidate" ]] && [[ -f "$candidate" ]]; then
             security_script="$candidate"
             break
@@ -772,9 +867,7 @@ update_require_security() {
         echo "  This is required for --stack updates." >&2
         echo "" >&2
         echo "  Checked locations:" >&2
-        echo "    - ${ACFS_BIN_DIR:-$HOME/.local/bin}/security.sh" >&2
-        echo "    - ${ACFS_HOME:-$HOME/.acfs}/scripts/lib/security.sh" >&2
-        echo "    - ${ACFS_REPO_ROOT:-}/scripts/security.sh" >&2
+        printf '    - %s\n' "${security_candidates[@]}" >&2
         echo "" >&2
         echo "  This usually means:" >&2
         echo "    1. You have an older ACFS installation, OR" >&2
@@ -837,7 +930,7 @@ update_run_verified_installer_with_env() {
     fi
 
     if ! update_require_security; then
-        echo "Security verification unavailable (missing $SCRIPT_DIR/security.sh or checksums.yaml)" >&2
+        echo "Security verification unavailable (missing $SCRIPT_DIR/security.sh, repo scripts/lib/security.sh, or checksums.yaml)" >&2
         return 1
     fi
 
@@ -876,11 +969,7 @@ update_run_verified_installer_with_env() {
     fi
 
     local exit_code=0
-    if [[ -n "$bash_env_assignment" ]]; then
-        env "$bash_env_assignment" bash "$tmp_install" "$@" </dev/null || exit_code=$?
-    else
-        bash "$tmp_install" "$@" </dev/null || exit_code=$?
-    fi
+    update_run_in_target_context "$bash_env_assignment" bash "$tmp_install" "$@" </dev/null || exit_code=$?
 
     rm -f "$tmp_install"
     return "$exit_code"
@@ -1335,6 +1424,7 @@ check_apt_lock() {
 
     if [[ "$ABORT_ON_FAILURE" == "true" ]]; then
         echo -e "${RED}Aborting: apt is locked and could not be released${NC}"
+        log_to_file "ABORT: Stopping due to --abort-on-failure"
         exit 1
     fi
 
@@ -1956,10 +2046,18 @@ update_stack() {
     # installs/updates them individually below.  Previously only --skip-cass
     # was passed, causing brenner's install_toolchain() to redundantly rebuild
     # NTM and CM from source — a 5+ hour hang on slow machines (fixes #210).
+    capture_version_before "brenner"
     run_cmd "Brenner Bot" update_run_verified_installer brenner_bot --skip-ntm --skip-cass --skip-cm
+    if capture_version_after "brenner"; then
+        [[ "$QUIET" != "true" ]] && printf "       ${DIM}%s → %s${NC}\n" "${VERSION_BEFORE[brenner]}" "${VERSION_AFTER[brenner]}"
+    fi
 
     # NTM - always install/update (installer is idempotent)
+    capture_version_before "ntm"
     run_cmd "NTM" update_run_verified_installer ntm
+    if capture_version_after "ntm"; then
+        [[ "$QUIET" != "true" ]] && printf "       ${DIM}%s → %s${NC}\n" "${VERSION_BEFORE[ntm]}" "${VERSION_AFTER[ntm]}"
+    fi
 
     # MCP Agent Mail - always install/update via non-blocking installer mode,
     # then enable the managed user service on port 8765.
@@ -1979,47 +2077,39 @@ update_stack() {
                 log_item "run" "MCP Agent Mail"
 
                 # Use --no-start and exact dir just like the manifest
-                local target_home="${TARGET_HOME:-${HOME:-}}"
-                if [[ -z "$target_home" ]]; then
-                    if [[ "${TARGET_USER:-ubuntu}" == "root" ]]; then
-                        target_home="/root"
-                    else
-                        target_home="/home/${TARGET_USER:-ubuntu}"
-                    fi
-                fi
+                local target_user=""
+                local target_home=""
+                target_user="$(update_target_user)"
+                target_home="$(update_target_home "$target_user")"
 
-                if bash "$tmp_install" --dir "$target_home/mcp_agent_mail" --yes --no-start; then
-                    local uid
-                    local runtime_dir
-                    local user_bus
-                    local storage_root
-                    local unit_dir
-                    local unit_file
-                    local am_bin
-                    local db_url
-                    local am_systemd_activation_failed=false
-                    uid="$(id -u)"
-                    runtime_dir="/run/user/$uid"
-                    user_bus="$runtime_dir/bus"
-                    storage_root="$HOME/.mcp_agent_mail_git_mailbox_repo"
-                    unit_dir="$HOME/.config/systemd/user"
-                    unit_file="$unit_dir/agent-mail.service"
-                    if ! am_bin="$(command -v am 2>/dev/null)"; then
-                        log_item "fail" "MCP Agent Mail" "am CLI missing after install"
-                        ((FAIL_COUNT += 1))
-                    else
-                        db_url="sqlite:///${storage_root}/storage.sqlite3"
+                if update_run_in_target_context "" bash "$tmp_install" --dir "$target_home/mcp_agent_mail" --yes --no-start; then
+                    if update_run_in_target_context "" bash -o pipefail -s <<'EOF'; then
+set -euo pipefail
 
-                        local -a service_env=("HOME=$HOME")
-                        if [[ -d "$runtime_dir" ]]; then
-                            service_env+=("XDG_RUNTIME_DIR=$runtime_dir")
-                            if [[ -S "$user_bus" ]]; then
-                                service_env+=("DBUS_SESSION_BUS_ADDRESS=unix:path=$user_bus")
-                            fi
-                        fi
+am_bin="$(command -v am 2>/dev/null)" || {
+    echo "am CLI missing after install" >&2
+    exit 1
+}
 
-                        mkdir -p "$storage_root" "$unit_dir"
-                        cat > "$unit_file" <<UNIT_EOF
+uid="$(id -u)"
+runtime_dir="/run/user/$uid"
+user_bus="$runtime_dir/bus"
+storage_root="$HOME/.mcp_agent_mail_git_mailbox_repo"
+unit_dir="$HOME/.config/systemd/user"
+unit_file="$unit_dir/agent-mail.service"
+db_url="sqlite:///${storage_root}/storage.sqlite3"
+am_systemd_activation_failed=false
+
+service_env=("HOME=$HOME")
+if [[ -d "$runtime_dir" ]]; then
+    service_env+=("XDG_RUNTIME_DIR=$runtime_dir")
+    if [[ -S "$user_bus" ]]; then
+        service_env+=("DBUS_SESSION_BUS_ADDRESS=unix:path=$user_bus")
+    fi
+fi
+
+mkdir -p "$storage_root" "$unit_dir"
+cat > "$unit_file" <<UNIT_EOF
 [Unit]
 Description=MCP Agent Mail Server
 After=network.target
@@ -2040,106 +2130,109 @@ RestartSec=5
 WantedBy=default.target
 UNIT_EOF
 
-                        env "${service_env[@]}" systemctl --user daemon-reload >/dev/null 2>&1 || true
-                        local fallback_pid_file="$storage_root/agent-mail.pid"
-                        local fallback_log_file="$storage_root/agent-mail.log"
-                        stop_agent_mail_fallback() {
-                            local existing_pid=""
-                            if [[ -f "$fallback_pid_file" ]]; then
-                                existing_pid="$(cat "$fallback_pid_file" 2>/dev/null || true)"
-                                if [[ -n "$existing_pid" ]] && kill -0 "$existing_pid" 2>/dev/null && \
-                                   ps -p "$existing_pid" -o args= 2>/dev/null | grep -Fq "$am_bin serve-http"; then
-                                    kill "$existing_pid" >/dev/null 2>&1 || true
-                                    for _ in {1..10}; do
-                                        if ! kill -0 "$existing_pid" 2>/dev/null; then
-                                            break
-                                        fi
-                                        sleep 1
-                                    done
-                                    if kill -0 "$existing_pid" 2>/dev/null; then
-                                        kill -9 "$existing_pid" >/dev/null 2>&1 || true
-                                    fi
-                                fi
-                                rm -f "$fallback_pid_file"
-                            fi
-                        }
-                        if env "${service_env[@]}" systemctl --user show-environment >/dev/null 2>&1; then
-                            stop_agent_mail_fallback
-                            if ! env "${service_env[@]}" systemctl --user enable --now agent-mail.service >/dev/null 2>&1; then
-                                env "${service_env[@]}" systemctl --user restart agent-mail.service >/dev/null 2>&1
-                            fi
-                            local am_active_waited=0
-                            local am_active_max_wait=10
-                            until env "${service_env[@]}" systemctl --user is-active --quiet agent-mail.service >/dev/null 2>&1; do
-                                if [[ "$am_active_waited" -ge "$am_active_max_wait" ]]; then
-                                    break
-                                fi
-                                sleep 1
-                                am_active_waited=$((am_active_waited + 1))
-                            done
-                            if ! env "${service_env[@]}" systemctl --user is-active --quiet agent-mail.service >/dev/null 2>&1; then
-                                log_item "fail" "MCP Agent Mail" "systemd user service failed to become active"
-                                ((FAIL_COUNT += 1))
-                                am_systemd_activation_failed=true
-                            fi
-                        else
-                            local existing_pid=""
-                            if curl -fsS --max-time 5 http://127.0.0.1:8765/health/liveness >/dev/null 2>&1; then
-                                :
-                            elif [[ -f "$fallback_pid_file" ]]; then
-                                existing_pid="$(cat "$fallback_pid_file" 2>/dev/null || true)"
-                                if [[ -n "$existing_pid" ]] && kill -0 "$existing_pid" 2>/dev/null && \
-                                   ps -p "$existing_pid" -o args= 2>/dev/null | grep -Fq "$am_bin serve-http"; then
-                                    :
-                                else
-                                    rm -f "$fallback_pid_file"
-                                    nohup env \
-                                        RUST_LOG=info \
-                                        STORAGE_ROOT="$storage_root" \
-                                        DATABASE_URL="$db_url" \
-                                        HTTP_ALLOW_LOCALHOST_UNAUTHENTICATED=true \
-                                        bash -c "$am_bin migrate && $am_bin serve-http --host 127.0.0.1 --port 8765 --path /mcp/" \
-                                        >>"$fallback_log_file" 2>&1 < /dev/null &
-                                    echo $! > "$fallback_pid_file"
-                                fi
-                            else
-                                nohup env \
-                                    RUST_LOG=info \
-                                    STORAGE_ROOT="$storage_root" \
-                                    DATABASE_URL="$db_url" \
-                                    HTTP_ALLOW_LOCALHOST_UNAUTHENTICATED=true \
-                                    bash -c "$am_bin migrate && $am_bin serve-http --host 127.0.0.1 --port 8765 --path /mcp/" \
-                                    >>"$fallback_log_file" 2>&1 < /dev/null &
-                                echo $! > "$fallback_pid_file"
-                            fi
-                        fi
+env "${service_env[@]}" systemctl --user daemon-reload >/dev/null 2>&1 || true
+fallback_pid_file="$storage_root/agent-mail.pid"
+fallback_log_file="$storage_root/agent-mail.log"
 
-                        local am_waited=0
-                        local am_max_wait=30
-                        until curl -fsS --max-time 10 http://127.0.0.1:8765/health/liveness >/dev/null 2>&1; do
-                            if [[ "$am_waited" -ge "$am_max_wait" ]]; then
-                                break
-                            fi
-                            sleep 2
-                            am_waited=$((am_waited + 2))
-                        done
+stop_agent_mail_fallback() {
+    existing_pid=""
+    if [[ -f "$fallback_pid_file" ]]; then
+        existing_pid="$(cat "$fallback_pid_file" 2>/dev/null || true)"
+        if [[ -n "$existing_pid" ]] && kill -0 "$existing_pid" 2>/dev/null && \
+           ps -p "$existing_pid" -o args= 2>/dev/null | grep -Fq "$am_bin serve-http"; then
+            kill "$existing_pid" >/dev/null 2>&1 || true
+            for _ in {1..10}; do
+                if ! kill -0 "$existing_pid" 2>/dev/null; then
+                    break
+                fi
+                sleep 1
+            done
+            if kill -0 "$existing_pid" 2>/dev/null; then
+                kill -9 "$existing_pid" >/dev/null 2>&1 || true
+            fi
+        fi
+        rm -f "$fallback_pid_file"
+    fi
+}
 
-                        if [[ "$am_systemd_activation_failed" != "true" ]] && \
-                           curl -fsS --max-time 10 http://127.0.0.1:8765/health/liveness >/dev/null 2>&1; then
-                            if [[ "$QUIET" != "true" ]] && [[ "$VERBOSE" != "true" ]]; then
-                                printf "\033[1A\033[2K  ${GREEN}[ok]${NC} %s\n" "MCP Agent Mail"
-                            elif [[ "$QUIET" != "true" ]]; then
-                                printf "  ${GREEN}[ok]${NC} %s\n" "MCP Agent Mail"
-                            fi
-                            log_to_file "Success: MCP Agent Mail"
-                            ((SUCCESS_COUNT += 1))
-                        elif [[ "$am_systemd_activation_failed" != "true" ]]; then
-                            if [[ "$QUIET" != "true" ]]; then
-                                printf "  ${RED}[fail]${NC} %s\n" "MCP Agent Mail - service not healthy on 127.0.0.1:8765"
-                            fi
-                            log_to_file "Failed: MCP Agent Mail - service not healthy after install"
-                            ((FAIL_COUNT += 1))
+if env "${service_env[@]}" systemctl --user show-environment >/dev/null 2>&1; then
+    stop_agent_mail_fallback
+    if ! env "${service_env[@]}" systemctl --user enable --now agent-mail.service >/dev/null 2>&1; then
+        env "${service_env[@]}" systemctl --user restart agent-mail.service >/dev/null 2>&1
+    fi
+    am_active_waited=0
+    am_active_max_wait=10
+    until env "${service_env[@]}" systemctl --user is-active --quiet agent-mail.service >/dev/null 2>&1; do
+        if [[ "$am_active_waited" -ge "$am_active_max_wait" ]]; then
+            break
+        fi
+        sleep 1
+        am_active_waited=$((am_active_waited + 1))
+    done
+    if ! env "${service_env[@]}" systemctl --user is-active --quiet agent-mail.service >/dev/null 2>&1; then
+        echo "systemd user service failed to become active" >&2
+        exit 1
+    fi
+else
+    existing_pid=""
+    if curl -fsS --max-time 5 http://127.0.0.1:8765/health/liveness >/dev/null 2>&1; then
+        :
+    elif [[ -f "$fallback_pid_file" ]]; then
+        existing_pid="$(cat "$fallback_pid_file" 2>/dev/null || true)"
+        if [[ -n "$existing_pid" ]] && kill -0 "$existing_pid" 2>/dev/null && \
+           ps -p "$existing_pid" -o args= 2>/dev/null | grep -Fq "$am_bin serve-http"; then
+            :
+        else
+            rm -f "$fallback_pid_file"
+            nohup env \
+                RUST_LOG=info \
+                STORAGE_ROOT="$storage_root" \
+                DATABASE_URL="$db_url" \
+                HTTP_ALLOW_LOCALHOST_UNAUTHENTICATED=true \
+                bash -c "$am_bin migrate && $am_bin serve-http --host 127.0.0.1 --port 8765 --path /mcp/" \
+                >>"$fallback_log_file" 2>&1 < /dev/null &
+            echo $! > "$fallback_pid_file"
+        fi
+    else
+        nohup env \
+            RUST_LOG=info \
+            STORAGE_ROOT="$storage_root" \
+            DATABASE_URL="$db_url" \
+            HTTP_ALLOW_LOCALHOST_UNAUTHENTICATED=true \
+            bash -c "$am_bin migrate && $am_bin serve-http --host 127.0.0.1 --port 8765 --path /mcp/" \
+            >>"$fallback_log_file" 2>&1 < /dev/null &
+        echo $! > "$fallback_pid_file"
+    fi
+fi
+
+am_waited=0
+am_max_wait=30
+until curl -fsS --max-time 10 http://127.0.0.1:8765/health/liveness >/dev/null 2>&1; do
+    if [[ "$am_waited" -ge "$am_max_wait" ]]; then
+        break
+    fi
+    sleep 2
+    am_waited=$((am_waited + 2))
+done
+
+if ! curl -fsS --max-time 10 http://127.0.0.1:8765/health/liveness >/dev/null 2>&1; then
+    echo "service not healthy on 127.0.0.1:8765" >&2
+    exit 1
+fi
+EOF
+                        if [[ "$QUIET" != "true" ]] && [[ "$VERBOSE" != "true" ]]; then
+                            printf "\033[1A\033[2K  ${GREEN}[ok]${NC} %s\n" "MCP Agent Mail"
+                        elif [[ "$QUIET" != "true" ]]; then
+                            printf "  ${GREEN}[ok]${NC} %s\n" "MCP Agent Mail"
                         fi
+                        log_to_file "Success: MCP Agent Mail"
+                        ((SUCCESS_COUNT += 1))
+                    else
+                        if [[ "$QUIET" != "true" ]]; then
+                            printf "  ${RED}[fail]${NC} %s\n" "MCP Agent Mail - service setup failed"
+                        fi
+                        log_to_file "Failed: MCP Agent Mail - service setup failed"
+                        ((FAIL_COUNT += 1))
                     fi
                 else
                     log_item "fail" "MCP Agent Mail" "installer failed"
@@ -2192,7 +2285,7 @@ UNIT_EOF
     run_cmd "CAAM" update_run_verified_installer caam
 
     # SLB - always install/update
-    run_cmd "SLB" update_run_verified_installer slb
+    run_cmd "SLB" update_run_verified_installer slb --easy-mode
 
     # RU (Repo Updater) - always install/update
     run_cmd "RU" update_run_verified_installer_with_env ru "RU_NON_INTERACTIVE=1"
@@ -2226,7 +2319,7 @@ UNIT_EOF
     run_cmd "MDWB" update_run_verified_installer mdwb --yes
 
     # S2P (Source to Prompt TUI) - always install/update
-    run_cmd "S2P" update_run_verified_installer s2p
+    run_cmd "S2P" update_run_verified_installer s2p -- --skip-cass
 
     # FrankenSearch (fsfs) - always install/update
     run_cmd "FrankenSearch" update_run_verified_installer fsfs --easy-mode
@@ -2237,6 +2330,27 @@ UNIT_EOF
     # Cross-Agent Session Resumer (casr) - always install/update
     run_cmd "CASR" update_run_verified_installer casr
 
+    # ASCII Art Diagram Corrector (aadc) - update when installed, or install with --force
+    if cmd_exists aadc || [[ "$FORCE_MODE" == "true" ]]; then
+        capture_version_before "aadc"
+        run_cmd "AADC" bash -c 'TMPDIR="$(mktemp -d)"; trap "rm -rf \"$TMPDIR\"" EXIT; git clone --depth 1 https://github.com/Dicklesworthstone/aadc.git "$TMPDIR/aadc" && cd "$TMPDIR/aadc" && cargo build --release && cp target/release/aadc ~/.cargo/bin/'
+        capture_version_after "aadc"
+    fi
+
+    # Coding Agent Usage Tracker (caut) - update when installed, or install with --force
+    if cmd_exists caut || [[ "$FORCE_MODE" == "true" ]]; then
+        capture_version_before "caut"
+        run_cmd "CAUT" bash -c 'TMPDIR="$(mktemp -d)"; trap "rm -rf \"$TMPDIR\"" EXIT; git clone --depth 1 https://github.com/Dicklesworthstone/coding_agent_usage_tracker.git "$TMPDIR/caut" && cd "$TMPDIR/caut" && cargo build --release && cp target/release/caut ~/.cargo/bin/'
+        capture_version_after "caut"
+    fi
+
+    # Rust Proxy (rust_proxy) - update when installed, or install with --force
+    if cmd_exists rust_proxy || [[ "$FORCE_MODE" == "true" ]]; then
+        capture_version_before "rust_proxy"
+        run_cmd "Rust Proxy" bash -c 'TMPDIR="$(mktemp -d)"; trap "rm -rf \"$TMPDIR\"" EXIT; git clone --depth 1 https://github.com/Dicklesworthstone/rust_proxy.git "$TMPDIR/rust_proxy" && cd "$TMPDIR/rust_proxy" && cargo build --release && cp target/release/rust_proxy ~/.cargo/bin/'
+        capture_version_after "rust_proxy"
+    fi
+
     # Agent Settings Backup (asb) - update when installed, or install with --force
     if cmd_exists asb || [[ "$FORCE_MODE" == "true" ]]; then
         capture_version_before "asb"
@@ -2246,8 +2360,6 @@ UNIT_EOF
         else
             log_to_file "ASB already up to date: ${VERSION_AFTER[asb]:-${VERSION_BEFORE[asb]:-unknown}}"
         fi
-    else
-        log_item "skip" "ASB" "not installed (use --force to install)"
     fi
 
     # Post-Compact Reminder (pcr) - only update when Claude Code is installed

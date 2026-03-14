@@ -1666,7 +1666,16 @@ check_utilities() {
 # check function; 1 (false) if it needs manifest supplemental coverage.
 _is_bespoke_covered() {
     local id="$1"
+    local module_id
+    module_id=$(_manifest_module_id "$id")
+
     case "$id" in
+        # check_cloud covers the CLI presence check, but we still want the
+        # manifest-derived PostgreSQL service health check (db.postgres18.2).
+        db.postgres18.1) return 0 ;;
+    esac
+
+    case "$module_id" in
         # check_identity
         users.ubuntu.*) return 0 ;;
         # check_workspace
@@ -1681,8 +1690,9 @@ _is_bespoke_covered() {
         tools.atuin|tools.zoxide|tools.ast_grep|tools.vault) return 0 ;;
         # check_agents
         agents.*) return 0 ;;
-        # check_cloud
-        cloud.*|network.*|db.*) return 0 ;;
+        # check_cloud / check_ssh
+        cloud.wrangler|cloud.supabase|cloud.vercel) return 0 ;;
+        network.tailscale|network.ssh_keepalive) return 0 ;;
         # check_stack  (individual stack entries)
         stack.ntm|stack.slb|stack.mcp_agent_mail) return 0 ;;
         stack.ultimate_bug_scanner.*|stack.beads_viewer) return 0 ;;

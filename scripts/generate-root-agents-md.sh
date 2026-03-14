@@ -63,8 +63,8 @@ build_tool_table() {
         "dcg:Destructive Command Guard:Safety net for dangerous shell commands"
         "ubs:Ultimate Bug Scanner:Automated code review and bug detection"
         "ms:Meta Skill:Claude Code skill management and generation"
-        "pt:Prompt Tools:Prompt engineering utilities"
-        "apr:APR:Automated PR review and management"
+        "pt:Process Triage:Process and system triage utilities"
+        "apr:Automated Plan Reviser:Automated PR review and management"
         "rch:Remote Compilation Helper:Offload compilation to worker fleet"
     )
 
@@ -104,7 +104,7 @@ AGENTS.md, and `.beads/` directory for local issue tracking.
   beads_rust/             # Issue tracker CLI (Rust)
   coding_agent_session_search/  # Session search (Rust)
   agentic_coding_flywheel_setup/  # VPS setup & scripts (Bash/TS)
-  mcp_agent_mail/         # Agent coordination server (Python)
+  mcp_agent_mail/         # Agent coordination server (Rust)
   ...
 ```
 
