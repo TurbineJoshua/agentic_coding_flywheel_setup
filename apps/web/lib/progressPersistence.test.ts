@@ -7,12 +7,19 @@ import {
 } from "./lessonProgress";
 import {
   addCompletedStep,
+  canAccessWizardStep,
   COMPLETED_STEPS_CHANGED_EVENT,
   COMPLETED_STEPS_KEY,
+  getNextReachableWizardStep,
   markStepComplete,
   setCompletedSteps,
   TOTAL_STEPS,
 } from "./wizardSteps";
+import {
+  CREATE_VPS_CHECKLIST_KEY,
+  getCreateVPSChecklist,
+  setCreateVPSChecklist,
+} from "./userPreferences";
 
 type StorageController = {
   dispatchCalls: Event[];
@@ -113,6 +120,12 @@ describe("progress persistence guards", () => {
     ).toBe(false);
   });
 
+  test("wizard step access follows contiguous completion", () => {
+    expect(canAccessWizardStep([1, 2, 3], 4)).toBe(true);
+    expect(canAccessWizardStep([1, 3], 3)).toBe(false);
+    expect(getNextReachableWizardStep([1, 3]).slug).toBe("install-terminal");
+  });
+
   test("markStepComplete falls back to persisted state on storage failure", () => {
     const browser = installMockBrowser({
       failSetItemForKey: COMPLETED_STEPS_KEY,
@@ -131,5 +144,27 @@ describe("progress persistence guards", () => {
           event.type === COMPLETED_LESSONS_CHANGED_EVENT
       )
     ).toBe(false);
+  });
+
+  test("create-vps checklist persistence normalizes values and only emits on success", () => {
+    const successBrowser = installMockBrowser({
+      initialValues: {
+        [CREATE_VPS_CHECKLIST_KEY]: JSON.stringify(["region", "region", 42, "ubuntu"]),
+      },
+    });
+
+    expect(getCreateVPSChecklist()).toEqual(["region", "ubuntu"]);
+    expect(setCreateVPSChecklist(["password", "password", "created"])).toBe(true);
+    expect(successBrowser.getStoredValue(CREATE_VPS_CHECKLIST_KEY)).toBe(
+      JSON.stringify(["password", "created"])
+    );
+    expect(successBrowser.dispatchCalls).toHaveLength(1);
+
+    const failingBrowser = installMockBrowser({
+      failSetItemForKey: CREATE_VPS_CHECKLIST_KEY,
+    });
+    expect(setCreateVPSChecklist(["ubuntu"])).toBe(false);
+    expect(failingBrowser.getStoredValue(CREATE_VPS_CHECKLIST_KEY)).toBeNull();
+    expect(failingBrowser.dispatchCalls).toHaveLength(0);
   });
 });

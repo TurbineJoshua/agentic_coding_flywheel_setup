@@ -389,6 +389,59 @@ test_meta_skill_arm64_linux_guidance() {
     fi
 }
 
+test_manifest_supplemental_coverage_is_precise() {
+    harness_section "Test: Manifest supplemental coverage keeps intended checks"
+
+    local output
+    output=$(bash "$REPO_ROOT/scripts/lib/doctor.sh" --json 2>&1)
+
+    local postgres_service_count
+    postgres_service_count=$(echo "$output" | jq '[.checks[] | select(.id == "db.postgres18.2")] | length' 2>/dev/null || echo "0")
+    if [[ "$postgres_service_count" -eq 1 ]]; then
+        harness_pass "PostgreSQL service health check remains in doctor output"
+    else
+        harness_fail "PostgreSQL service health check is missing from doctor output"
+        harness_capture_output "doctor_json_output" "$output"
+    fi
+
+    local agent_mail_supplemental_count
+    agent_mail_supplemental_count=$(echo "$output" | jq '[.checks[] | select(.id == "stack.mcp_agent_mail.2")] | length' 2>/dev/null || echo "0")
+    if [[ "$agent_mail_supplemental_count" -eq 0 ]]; then
+        harness_pass "Agent Mail supplemental duplicate remains suppressed"
+    else
+        harness_fail "Agent Mail supplemental duplicate leaked into doctor output"
+        harness_capture_output "doctor_json_output" "$output"
+    fi
+
+    local agent_mail_bespoke_count
+    agent_mail_bespoke_count=$(echo "$output" | jq '[.checks[] | select(.id == "stack.mcp_agent_mail")] | length' 2>/dev/null || echo "0")
+    if [[ "$agent_mail_bespoke_count" -eq 1 ]]; then
+        harness_pass "Agent Mail bespoke check is still present"
+    else
+        harness_fail "Agent Mail bespoke check is missing from doctor output"
+        harness_capture_output "doctor_json_output" "$output"
+    fi
+}
+
+test_manifest_guard_scripts_cover_all_generated_outputs() {
+    harness_section "Test: Manifest guard scripts cover all generated outputs"
+
+    local hook_file="$REPO_ROOT/scripts/hooks/pre-commit"
+    local drift_file="$REPO_ROOT/scripts/check-manifest-drift.sh"
+
+    if grep -Fq 'git add apps/web/lib/generated/' "$hook_file"; then
+        harness_pass "Pre-commit hook stages apps/web/lib/generated/"
+    else
+        harness_fail "Pre-commit hook does not stage apps/web/lib/generated/"
+    fi
+
+    if grep -q 'bun run generate:diff' "$drift_file"; then
+        harness_pass "Manifest drift check validates generated artifacts via generate:diff"
+    else
+        harness_fail "Manifest drift check does not validate generated artifacts via generate:diff"
+    fi
+}
+
 # ============================================================
 # Main
 # ============================================================
@@ -410,6 +463,8 @@ main() {
     test_manifest_checks_have_required_fields
     test_doctor_summary_counts
     test_meta_skill_arm64_linux_guidance
+    test_manifest_supplemental_coverage_is_precise
+    test_manifest_guard_scripts_cover_all_generated_outputs
 
     # Summary
     harness_section "Test Summary"

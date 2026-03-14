@@ -161,3 +161,53 @@ EOF
     run cat "$sudo_log"
     assert_output --partial "-n fuser $lockfile"
 }
+
+@test "update_require_security: sources repo-local scripts/lib/security.sh" {
+    local repo_root
+    local marker_file
+
+    repo_root="$(create_temp_dir)"
+    marker_file="$repo_root/security-sourced.marker"
+
+    mkdir -p "$repo_root/scripts/lib"
+    cat > "$repo_root/scripts/lib/security.sh" <<EOF
+#!/usr/bin/env bash
+load_checksums() {
+    : > "$marker_file"
+    return 0
+}
+EOF
+    chmod +x "$repo_root/scripts/lib/security.sh"
+
+    export ACFS_BIN_DIR="$repo_root/missing-bin"
+    export ACFS_HOME="$repo_root/missing-home"
+    export ACFS_REPO_ROOT="$repo_root"
+    export CHECKSUMS_LOCAL="$repo_root/checksums.yaml"
+    UPDATE_SECURITY_READY=false
+
+    refresh_checksums() {
+        return 0
+    }
+
+    run update_require_security
+    assert_success
+    [[ -f "$marker_file" ]]
+}
+
+@test "update_require_security: does not probe bogus repo path when ACFS_REPO_ROOT is unset" {
+    export ACFS_BIN_DIR="$HOME/missing-bin"
+    export ACFS_HOME="$HOME/missing-home"
+    unset ACFS_REPO_ROOT
+    export CHECKSUMS_LOCAL="$HOME/checksums.yaml"
+    UPDATE_SECURITY_READY=false
+
+    refresh_checksums() {
+        return 0
+    }
+
+    run update_require_security
+    assert_failure
+    assert_output --partial "$ACFS_BIN_DIR/security.sh"
+    assert_output --partial "$ACFS_HOME/scripts/lib/security.sh"
+    refute_output --partial "    - /scripts/lib/security.sh"
+}
