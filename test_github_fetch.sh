@@ -15,11 +15,11 @@ _fetch_github_version() {
     local location_header
     # Added -w '%{redirect_url}' to debug what curl actually sees vs what grep finds
     # But sticking to the exact code in cli_tools.sh for fidelity:
-    if location_header=$(curl -sI --max-time 10 "https://github.com/$repo/releases/latest" | grep -i "^location:" | head -n 1); then
+    if location_header=$(curl -sI --max-time 10 "https://github.com/$repo/releases/latest" | grep -i "^location:" | head -n 1 | tr -d '\r'); then
         echo "Raw header found: '$location_header'"
-        # Use awk to grab the URL (second field) and strip carriage returns
+        # Use awk to grab the URL (second field)
         local url
-        url=$(echo "$location_header" | awk '{print $2}' | tr -d '\r')
+        url=$(echo "$location_header" | awk '{print $2}')
         tag="${url##*/}"
         echo "Parsed tag: '$tag'"
     else

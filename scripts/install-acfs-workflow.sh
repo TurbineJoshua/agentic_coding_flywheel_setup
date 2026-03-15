@@ -71,10 +71,12 @@ echo "Downloading template from ACFS..."
 if ! curl -sL "$ACFS_TEMPLATE_URL" \
     | sed "s/{{ TOOL_NAME_PLACEHOLDER }}/$TOOL_NAME/g" \
     | sed "s|INSTALLER_PATH: 'install.sh'|INSTALLER_PATH: '$INSTALLER_PATH'|g" \
-    > .github/workflows/notify-acfs.yml; then
+    > .github/workflows/notify-acfs.yml.tmp; then
     echo -e "${RED}Error: Failed to download template${NC}"
+    rm -f .github/workflows/notify-acfs.yml.tmp
     exit 1
 fi
+mv .github/workflows/notify-acfs.yml.tmp .github/workflows/notify-acfs.yml
 
 echo -e "${GREEN}Workflow installed at .github/workflows/notify-acfs.yml${NC}"
 echo ""
@@ -113,9 +115,12 @@ VALIDATE_TEMPLATE_URL="https://raw.githubusercontent.com/Dicklesworthstone/agent
 if curl -sL "$VALIDATE_TEMPLATE_URL" \
     | sed "s/{{ TOOL_NAME_PLACEHOLDER }}/$TOOL_NAME/g" \
     | sed "s|INSTALLER_PATH: 'install.sh'|INSTALLER_PATH: '$INSTALLER_PATH'|g" \
-    > .github/workflows/validate-acfs.yml 2>/dev/null; then
+    > .github/workflows/validate-acfs.yml.tmp 2>/dev/null; then
+    mv .github/workflows/validate-acfs.yml.tmp .github/workflows/validate-acfs.yml
     echo -e "${GREEN}Validation workflow installed at .github/workflows/validate-acfs.yml${NC}"
     echo ""
     echo "To validate your setup:"
     echo "  gh workflow run validate-acfs.yml"
+else
+    rm -f .github/workflows/validate-acfs.yml.tmp
 fi
