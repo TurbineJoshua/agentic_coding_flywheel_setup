@@ -912,81 +912,22 @@ update_run_meta_skill_source_install() {
 }
 
 # shellcheck disable=SC2317,SC2329  # invoked indirectly via run_cmd()
-update_run_verified_installer_with_env() {
-    if [[ $# -lt 1 ]]; then
-        echo "update_run_verified_installer_with_env requires a tool name" >&2
-        return 1
-    fi
-
-    local tool="$1"
-    local bash_env_assignment="${2:-}"
-    if [[ $# -ge 2 ]]; then
-        shift 2
-    else
-        shift
-    fi
-
-    if [[ "$tool" == "ms" ]] && update_is_linux_arm64; then
-        update_run_meta_skill_source_install
-        return $?
-    fi
-
-    if ! update_require_security; then
-        echo "Security verification unavailable (missing $SCRIPT_DIR/security.sh, repo scripts/lib/security.sh, or checksums.yaml)" >&2
-        return 1
-    fi
-
-    local url="${KNOWN_INSTALLERS[$tool]:-}"
-    local expected_sha256
-    expected_sha256="$(get_checksum "$tool")"
-
-    if [[ -z "$url" ]] || [[ -z "$expected_sha256" ]]; then
-        echo "Missing checksum entry for $tool" >&2
-        return 1
-    fi
-
-    if [[ -n "$bash_env_assignment" ]] && [[ ! "$bash_env_assignment" =~ ^[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]+$ ]]; then
-        echo "Invalid inline env assignment for $tool installer: $bash_env_assignment" >&2
-        return 1
-    fi
-
-    local tmp_install=""
-    tmp_install=$(mktemp "${TMPDIR:-/tmp}/acfs-update-${tool}.XXXXXX" 2>/dev/null) || tmp_install=""
-    if [[ -z "$tmp_install" ]]; then
-        echo "Failed to create temp file for verified $tool installer" >&2
-        return 1
-    fi
-
-    if verify_checksum "$url" "$expected_sha256" "$tool" > "$tmp_install"; then
-        :
-    else
-        local exit_code=$?
-        rm -f "$tmp_install"
-        return "$exit_code"
-    fi
-
-    if ! chmod +x "$tmp_install"; then
-        rm -f "$tmp_install"
-        return 1
-    fi
-
-    local exit_code=0
-    update_run_in_target_context "$bash_env_assignment" bash "$tmp_install" "$@" </dev/null || exit_code=$?
-
-    rm -f "$tmp_install"
-    return "$exit_code"
-}
-
-# shellcheck disable=SC2317,SC2329  # invoked indirectly via run_cmd()
-update_run_verified_installer() {
-    if [[ $# -lt 1 ]]; then
-        echo "update_run_verified_installer requires a tool name" >&2
-        return 1
-    fi
-
-    local tool="$1"
-    shift
-    update_run_verified_installer_with_env "$tool" "" "$@"
+update_run_slb_source_install() {
+    log_detail "Building SLB from source (upstream installer issue workaround)"
+    
+    local build_cmd
+    build_cmd="$(cat <<'EOF'
+set -euo pipefail
+mkdir -p "$HOME/go/bin"
+SLB_TMP="$(mktemp -d "${TMPDIR:-/tmp}/slb_build.XXXXXX")"
+cd "$SLB_TMP"
+git clone --depth 1 https://github.com/Dicklesworthstone/simultaneous_launch_button.git .
+go build -o "$HOME/go/bin/slb" ./cmd/slb
+cd ..
+rm -rf "$SLB_TMP"
+EOF
+)"
+    update_run_in_target_context "" bash -c "$build_cmd"
 }
 
 # ============================================================
@@ -2326,8 +2267,8 @@ EOF
     # CAAM - always install/update
     run_cmd "CAAM" update_run_verified_installer caam
 
-    # SLB - always install/update
-    run_cmd "SLB" update_run_verified_installer slb --easy-mode
+    # SLB - always install/update (must build from source due to upstream installer bug)
+    run_cmd "SLB" update_run_slb_source_install
 
     # RU (Repo Updater) - always install/update
     run_cmd "RU" update_run_verified_installer_with_env ru "RU_NON_INTERACTIVE=1"
