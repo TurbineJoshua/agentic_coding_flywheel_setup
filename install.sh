@@ -2893,7 +2893,7 @@ validate_target_user() {
     fi
 
     # Hard-stop on unsafe usernames (prevents injection into sudoers/paths).
-    if [[ ! "$TARGET_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]; then
+    if [[ ! "$TARGET_USER" =~ ^[a-z_][a-z0-9._-]*$ ]]; then
         log_fatal "Invalid TARGET_USER '$TARGET_USER' (expected: lowercase user name like 'ubuntu')"
     fi
 }
@@ -4734,7 +4734,7 @@ NTM_CONFIG_EOF
             if [[ -n "$tmp_install" ]] && verify_checksum "$url" "$expected_sha256" "$tool" > "$tmp_install"; then
                 chmod 755 "$tmp_install" 2>/dev/null || true
 
-                if try_step "Installing MCP Agent Mail" run_as_target bash "$tmp_install" --dir "$target_dir" --yes --no-start; then
+                if try_step "Installing MCP Agent Mail" run_as_target bash "$tmp_install" --dest "$target_dir" --yes; then
                     if run_as_target bash -c 'set -euo pipefail
                         command -v am >/dev/null 2>&1
                         storage_root="$HOME/.mcp_agent_mail_git_mailbox_repo"
@@ -5064,6 +5064,110 @@ UNIT_EOF
     else
         log_warn "DCG hook not registered (dcg binary not found in standard paths)"
         log_detail "Install DCG first, then run: dcg install"
+    fi
+
+    # Token-Optimized Notation (tru)
+    if binary_installed "tru"; then
+        log_detail "TRU already installed"
+    else
+        log_detail "Installing TRU"
+        try_step "Installing TRU" acfs_run_verified_upstream_script_as_target "tru" "bash" || log_warn "TRU installation may have failed"
+    fi
+
+    # Automated Plan Reviser (apr)
+    if binary_installed "apr"; then
+        log_detail "APR already installed"
+    else
+        log_detail "Installing APR"
+        try_step "Installing APR" acfs_run_verified_upstream_script_as_target "apr" "bash" --easy-mode || log_warn "APR installation may have failed"
+    fi
+
+    # Chat Shared Conversation to File (csctf)
+    if binary_installed "csctf"; then
+        log_detail "CSCTF already installed"
+    else
+        log_detail "Installing CSCTF"
+        try_step "Installing CSCTF" acfs_run_verified_upstream_script_as_target "csctf" "bash" || log_warn "CSCTF installation may have failed"
+    fi
+
+    # Get Image from Internet Link (giil)
+    if binary_installed "giil"; then
+        log_detail "GIIL already installed"
+    else
+        log_detail "Installing GIIL"
+        try_step "Installing GIIL" acfs_run_verified_upstream_script_as_target "giil" "bash" || log_warn "GIIL installation may have failed"
+    fi
+
+    # JeffreysPrompts CLI (jfp)
+    if binary_installed "jfp"; then
+        log_detail "JFP already installed"
+    else
+        log_detail "Installing JFP"
+        try_step "Installing JFP" acfs_run_verified_upstream_script_as_target "jfp" "bash" || log_warn "JFP installation may have failed"
+    fi
+
+    # Markdown Web Browser (mdwb)
+    if binary_installed "mdwb"; then
+        log_detail "MDWB already installed"
+    else
+        log_detail "Installing MDWB"
+        try_step "Installing MDWB" acfs_run_verified_upstream_script_as_target "mdwb" "bash" || log_warn "MDWB installation may have failed"
+    fi
+
+    # Meta Skill (ms)
+    if binary_installed "ms"; then
+        log_detail "Meta Skill already installed"
+    else
+        log_detail "Installing Meta Skill"
+        try_step "Installing Meta Skill" acfs_run_verified_upstream_script_as_target "ms" "bash" --easy-mode || log_warn "Meta Skill installation may have failed"
+    fi
+
+    # OpenCode
+    if binary_installed "opencode"; then
+        log_detail "OpenCode already installed"
+    else
+        log_detail "Installing OpenCode"
+        try_step "Installing OpenCode" acfs_run_verified_upstream_script_as_target "opencode" "bash" || log_warn "OpenCode installation may have failed"
+    fi
+
+    # Network Observer (rano)
+    if binary_installed "rano"; then
+        log_detail "RANO already installed"
+    else
+        log_detail "Installing RANO"
+        try_step "Installing RANO" acfs_run_verified_upstream_script_as_target "rano" "bash" || log_warn "RANO installation may have failed"
+    fi
+
+    # Source to Prompt TUI (s2p)
+    if binary_installed "s2p"; then
+        log_detail "S2P already installed"
+    else
+        log_detail "Installing S2P"
+        try_step "Installing S2P" acfs_run_verified_upstream_script_as_target "s2p" "bash" -- --skip-cass || log_warn "S2P installation may have failed"
+    fi
+
+    # System Resource Protection Script (srps)
+    if binary_installed "sysmoni"; then
+        log_detail "SRPS already installed"
+    else
+        log_detail "Installing SRPS"
+        try_step "Installing SRPS" acfs_run_verified_upstream_script_as_target "srps" "bash" --install || log_warn "SRPS installation may have failed"
+    fi
+
+    # X Archive Search (xf)
+    if binary_installed "xf"; then
+        log_detail "XF already installed"
+    else
+        log_detail "Installing XF"
+        try_step "Installing XF" acfs_run_verified_upstream_script_as_target "xf" "bash" --easy-mode || log_warn "XF installation may have failed"
+    fi
+
+    # Brenner Bot
+    if binary_installed "brenner"; then
+        log_detail "Brenner Bot already installed"
+    else
+        log_detail "Installing Brenner Bot"
+        try_step "Installing Brenner Bot" acfs_run_verified_upstream_script_as_target "brenner_bot" "bash" -- --skip-cass || log_warn "Brenner Bot installation may have failed"
     fi
 
     log_success "Dicklesworthstone stack installed"
