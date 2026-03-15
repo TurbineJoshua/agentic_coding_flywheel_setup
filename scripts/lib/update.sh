@@ -2108,13 +2108,13 @@ update_stack() {
                 chmod +x "$tmp_install"
                 log_item "run" "MCP Agent Mail"
 
-                # Use --no-start and exact dir just like the manifest
+                # Use --dest and exact target dir just like the manifest
                 local target_user=""
                 local target_home=""
                 target_user="$(update_target_user)"
                 target_home="$(update_target_home "$target_user")"
 
-                if update_run_in_target_context "" bash "$tmp_install" --dest "$target_home/mcp_agent_mail" --yes --no-start; then
+                if update_run_in_target_context "" bash "$tmp_install" --dest "$target_home/mcp_agent_mail" --yes; then
                     if update_run_in_target_context "" bash -o pipefail -s <<'EOF'; then
 set -euo pipefail
 

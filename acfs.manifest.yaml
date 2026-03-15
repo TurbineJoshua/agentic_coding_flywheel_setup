@@ -1066,7 +1066,7 @@ modules:
     verified_installer:
       tool: mcp_agent_mail
       runner: bash
-      args: ["--dir", "${TARGET_HOME:-/home/ubuntu}/mcp_agent_mail", "--yes", "--no-start"]
+      args: ["--dest", "${TARGET_HOME:-/home/ubuntu}/mcp_agent_mail", "--yes"]
     install:
       - |
           if ! command -v am >/dev/null 2>&1; then
