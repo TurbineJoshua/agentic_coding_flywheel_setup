@@ -47,7 +47,7 @@ autofix_unattended_upgrades_check() {
 
     # Check for lock files being held
     for lock in "${APT_LOCK_FILES[@]}"; do
-        if [[ -f "$lock" ]] && fuser "$lock" &>/dev/null 2>&1; then
+        if [[ -f "$lock" ]] && fuser "$lock" >/dev/null 2>&1; then
             held_locks+=("$lock")
         fi
     done
@@ -281,7 +281,7 @@ _autofix_remove_stale_locks() {
         fi
 
         # Check if lock is actively held
-        if fuser "$lock" &>/dev/null 2>&1; then
+        if fuser "$lock" >/dev/null 2>&1; then
             log_debug "[AUTO-FIX:unattended] Lock still held, skipping: $lock"
             continue
         fi

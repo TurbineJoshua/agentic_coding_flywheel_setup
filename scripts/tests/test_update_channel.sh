@@ -344,9 +344,9 @@ section "Test 8: Channel version alignment (live, optional)"
 # ============================================================
 if command -v npm &>/dev/null && command -v claude &>/dev/null; then
     dist_tags=$(npm view @anthropic-ai/claude-code dist-tags 2>/dev/null || true)
-    installed=$(claude --version 2>/dev/null | grep -oP '[\d]+\.[\d]+\.[\d]+' || true)
-    latest=$(echo "$dist_tags" | grep -oP "latest: '\K[^']+" || true)
-    stable=$(echo "$dist_tags" | grep -oP "stable: '\K[^']+" || true)
+    installed=$(claude --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)
+    latest=$(echo "$dist_tags" | sed -n "s/.*latest: '\([^']*\)'.*/\1/p" || true)
+    stable=$(echo "$dist_tags" | sed -n "s/.*stable: '\([^']*\)'.*/\1/p" || true)
     log "  Installed: ${installed:-unknown}"
     log "  Latest:    ${latest:-unknown}"
     log "  Stable:    ${stable:-unknown}"

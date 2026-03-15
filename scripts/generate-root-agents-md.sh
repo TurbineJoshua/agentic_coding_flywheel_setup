@@ -41,7 +41,7 @@ get_version() {
     local path
     path=$(command -v "$tool" 2>/dev/null) || { echo "not installed"; return; }
     local ver
-    ver=$("$tool" --version 2>/dev/null | head -1 | grep -oP '[\d]+\.[\d]+\.[\d]+' | head -1) || ver=""
+    ver=$("$tool" --version 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1) || ver=""
     if [[ -n "$ver" ]]; then
         echo "$ver"
     else

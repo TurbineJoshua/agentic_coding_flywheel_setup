@@ -674,7 +674,28 @@ install_slb() {
 
     log_detail "Installing ${STACK_NAMES[$tool]}..."
 
-    if _stack_run_installer "$tool"; then
+    # SLB upstream installer is broken due to module path mismatch
+    # Build from source instead
+    local slb_build_cmd
+    slb_build_cmd="$(cat <<'EOF'
+set -euo pipefail
+mkdir -p "$HOME/go/bin"
+SLB_TMP="$(mktemp -d "${TMPDIR:-/tmp}/slb_build.XXXXXX")"
+cd "$SLB_TMP"
+git clone --depth 1 https://github.com/Dicklesworthstone/simultaneous_launch_button.git .
+go build -o "$HOME/go/bin/slb" ./cmd/slb
+cd ..
+rm -rf "$SLB_TMP"
+# Add ~/go/bin to PATH if not already present
+if ! grep -q 'export PATH=.*\$HOME/go/bin' ~/.zshrc 2>/dev/null; then
+  echo '' >> ~/.zshrc
+  echo '# Go binaries' >> ~/.zshrc
+  echo 'export PATH="$HOME/go/bin:$PATH"' >> ~/.zshrc
+fi
+EOF
+)"
+
+    if _stack_run_as_user "$slb_build_cmd"; then
         if _stack_is_installed "$tool"; then
             log_success "${STACK_NAMES[$tool]} installed"
             return 0
