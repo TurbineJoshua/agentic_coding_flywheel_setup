@@ -4701,7 +4701,13 @@ NTM_CONFIG_EOF
 
     # MCP Agent Mail
     local am_cli_path="$TARGET_HOME/.local/bin/am"
-    if binary_installed "mcp-agent-mail" || [[ -x "$am_cli_path" ]] || [[ -d "$TARGET_HOME/mcp_agent_mail" ]]; then
+    # Repair missing symlink from partial previous installs before checking status
+    if [[ -x "$TARGET_HOME/mcp_agent_mail/am" ]] && [[ ! -x "$am_cli_path" ]]; then
+        log_detail "Linking mcp_agent_mail/am into ~/.local/bin (repair)"
+        run_as_target ln -sf "$TARGET_HOME/mcp_agent_mail/am" "$am_cli_path" || true
+    fi
+    if binary_installed "mcp-agent-mail" || [[ -x "$am_cli_path" ]] || \
+       ( [[ -d "$TARGET_HOME/mcp_agent_mail" ]] && [[ -x "$TARGET_HOME/mcp_agent_mail/am" ]] ); then
         log_detail "MCP Agent Mail already installed; ensuring managed service"
     else
         log_detail "Installing MCP Agent Mail"
@@ -4741,6 +4747,10 @@ NTM_CONFIG_EOF
                 chmod 755 "$tmp_install" 2>/dev/null || true
 
                 if try_step "Installing MCP Agent Mail" run_as_target bash "$tmp_install" --dest "$target_dir" --yes; then
+                    # Link binary into PATH immediately so service setup can find it
+                    if [[ -x "$target_dir/am" ]] && [[ ! -x "$am_cli_path" ]]; then
+                        run_as_target ln -sf "$target_dir/am" "$am_cli_path" || true
+                    fi
                     if run_as_target bash -c 'set -euo pipefail
                         command -v am >/dev/null 2>&1
                         storage_root="$HOME/.mcp_agent_mail_git_mailbox_repo"
